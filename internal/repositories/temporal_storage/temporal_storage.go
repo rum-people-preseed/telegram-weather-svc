@@ -1,22 +1,8 @@
 package temporal_storage
 
-type InteractionType int64
-
-const (
-	GettingLocationData InteractionType = 0
-	GettingDataTime     InteractionType = 1
-)
-
-type InteractionData struct {
-	chatId          int64
-	interactionType InteractionType
-	city            string
-	country         string
-}
-
 type TemporalStorage interface {
-	AddNewInteraction(chatId int64, interactionType InteractionType) error
-	AddCountry(chatId int64, country string) error
-	AddCity(chatId int64, city string) error
-	GetInteractionData(chatId int64) (InteractionData, error)
+	Set(id int64, key string, value string) error
+	Del(id int64) error
+	Get(id int64, key string) (string, error)
+	DelValue(id int64, key string) error
 }
