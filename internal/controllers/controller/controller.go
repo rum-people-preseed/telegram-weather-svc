@@ -1,7 +1,8 @@
-package upcomming_messages_controller
+package controller
 
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/user_storage"
 )
@@ -9,6 +10,7 @@ import (
 type UpcommingMessagesController struct {
 	temporalStorage temporal_storage.TemporalStorage
 	userStorage     user_storage.UserStorage
+	bot             models.Bot
 }
 
 type Command int64
@@ -19,6 +21,10 @@ const (
 	predict Command = 2
 )
 
+func NewUpcommingMessagesController(bot models.Bot) UpcommingMessagesController {
+	return UpcommingMessagesController{bot: bot}
+}
+
 func (v *UpcommingMessagesController) HandleMessage(message *tgbotapi.Message) error {
 	interactionData, err := v.temporalStorage.GetInteractionData(message.Chat.ID)
 	if err == nil {
@@ -26,6 +32,7 @@ func (v *UpcommingMessagesController) HandleMessage(message *tgbotapi.Message) e
 	}
 	return v.handleNewInteraction(message)
 }
+
 func getCommand(commandString string) (Command, error) {
 	return start, nil
 }
