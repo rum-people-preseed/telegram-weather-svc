@@ -18,10 +18,12 @@ func main() {
 	startUsecase := usecases.StartUsecase{}
 	helpUsecase := usecases.HelpUsecase{}
 	predictUsecase := usecases.PredictUsecase{}
+	updateLocationUsecase := usecases.UpdateLocationUsecase{}
 
 	messagesController.RegisterUsecase(&startUsecase, "/start")
 	messagesController.RegisterUsecase(&helpUsecase, "/help")
 	messagesController.RegisterUsecase(&predictUsecase, "/predict")
+	messagesController.RegisterUsecase(&updateLocationUsecase, "/update_location")
 
 	updates := bot.SetUpUpdates()
 	for update := range updates {

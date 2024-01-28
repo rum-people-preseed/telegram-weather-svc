@@ -74,29 +74,28 @@ func (h *MessageHandler) AcceptNewMessage(message *tgbotapi.Message) error {
 	command, errCommand := extractCommand(message.Text)
 
 	if errActive != nil {
-		// absolutely new message. [Send default message]
+		// random message
 		if errCommand != nil {
 			return errors.New("need to activate separate usecase, ex. /help")
 		}
 
-		// absolutely new command
-		h.usecasesData.Set(id, activeCommandKey, "/"+command)
+		// new command
+		h.usecasesData.Set(id, activeCommandKey, command)
 		return h.ExecuteUsecase(message, command)
 	}
 
-	// new message during existing command. For passing data in chase of messages
-	if errCommand != nil {
-		// for what ???
+	// new command during existing command
+	if errCommand == nil {
 		err := h.usecasesData.Del(id)
 
 		if err != nil {
 			h.log.Warnf("failed to delete data with id %v", id)
 		}
 
+		h.usecasesData.Set(id, activeCommandKey, command)
 		return h.ExecuteUsecase(message, command)
 	}
 
-	// new command during existing one -> error ???
 	return h.ExecuteUsecase(message, activeCommand)
 }
 
