@@ -11,12 +11,10 @@ func CreateTemporalStorageAccessor(storage TemporalStorage, id int64) TemporalSt
 	}
 }
 
-func (s *TemporalStorageAccessor) Set(key string, value string) {
-	err := s.storage.Set(s.id, key, value)
-	if err != nil {
-		// do something
-	}
+func (s *TemporalStorageAccessor) Set(key string, value string) error {
+	return s.storage.Set(s.id, key, value)
 }
+
 func (s *TemporalStorageAccessor) Get(key string) (string, error) {
 	return s.storage.Get(s.id, key)
 }

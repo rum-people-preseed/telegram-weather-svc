@@ -5,17 +5,19 @@ import (
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"go.uber.org/zap"
-	"os"
 )
 
 func main() {
 
 	bot := models.NewBot()
-	updates := bot.SetUpUpdates()
-	messagesController := controller.NewMessageHandler(bot.BotAPI)
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	messagesController := controller.NewMessageHandler(bot.BotAPI, logger.Sugar())
 	startUsecase := usecases.StartUsecase{}
+
 	messagesController.RegisterUsecase(&startUsecase, "/start")
 
+	updates := bot.SetUpUpdates()
 	for update := range updates {
 		if update.Message == nil {
 			continue
@@ -23,8 +25,7 @@ func main() {
 
 		err := messagesController.AcceptNewMessage(update.Message)
 		if err != nil {
-			zap.String("error", "Failed to handle message")
-			os.Exit(1)
+			logger.Sugar().Warnf("error while handling message %v", err)
 		}
 	}
 }
