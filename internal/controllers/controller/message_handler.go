@@ -33,10 +33,12 @@ type MessageHandler struct {
 	bot                 *tgbotapi.BotAPI
 }
 
-func NewMessageHandler(bot *tgbotapi.BotAPI, log Logger) *MessageHandler {
+func NewMessageHandler(bot *tgbotapi.BotAPI, log Logger, usecasesData temporal_storage.TemporalStorage) *MessageHandler {
 	return &MessageHandler{
-		bot: bot,
-		log: log,
+		bot:                 bot,
+		log:                 log,
+		usecasesData:        usecasesData,
+		registeredCallbacks: make(map[string]usecases.Usecase),
 	}
 }
 
@@ -72,13 +74,19 @@ func (h *MessageHandler) AcceptNewMessage(message *tgbotapi.Message) error {
 	command, errCommand := extractCommand(message.Text)
 
 	if errActive != nil {
+		// absolutely new message. [Send default message]
 		if errCommand != nil {
 			return errors.New("need to activate separate usecase, ex. /help")
 		}
+
+		// absolutely new command
+		h.usecasesData.Set(id, activeCommandKey, "/"+command)
 		return h.ExecuteUsecase(message, command)
 	}
 
+	// new message during existing command. For passing data in chase of messages
 	if errCommand != nil {
+		// for what ???
 		err := h.usecasesData.Del(id)
 
 		if err != nil {
@@ -88,6 +96,7 @@ func (h *MessageHandler) AcceptNewMessage(message *tgbotapi.Message) error {
 		return h.ExecuteUsecase(message, command)
 	}
 
+	// new command during existing one -> error ???
 	return h.ExecuteUsecase(message, activeCommand)
 }
 
