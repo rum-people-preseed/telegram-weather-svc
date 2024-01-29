@@ -17,5 +17,5 @@ const (
 )
 
 type Usecase interface {
-	Handle(message *tgbotapi.Message, usecaseData DataMap) (*tgbotapi.MessageConfig, Status)
+	Handle(update *tgbotapi.Update, usecaseData DataMap) (*tgbotapi.MessageConfig, Status)
 }

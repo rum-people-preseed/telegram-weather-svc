@@ -8,13 +8,8 @@ import (
 type UpdateLocationUsecase struct {
 }
 
-const (
-	activatedKey = "activated"
-	countryKey   = "country"
-	cityKey      = "city"
-)
-
-func (u *UpdateLocationUsecase) Handle(message *tgbotapi.Message, usecaseData DataMap) (*tgbotapi.MessageConfig, Status) {
+func (u *UpdateLocationUsecase) Handle(update *tgbotapi.Update, usecaseData DataMap) (*tgbotapi.MessageConfig, Status) {
+	message := update.Message
 	invalidMsg := tgbotapi.NewMessage(message.Chat.ID, "Internal error")
 
 	_, err := usecaseData.Get(activatedKey)

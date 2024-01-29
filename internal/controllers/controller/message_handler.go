@@ -5,7 +5,9 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/utils"
 )
 
 type Logger interface {
@@ -30,10 +32,10 @@ type MessageHandler struct {
 	registeredCallbacks map[string]usecases.Usecase
 	usecasesData        temporal_storage.TemporalStorage
 	log                 Logger
-	bot                 *tgbotapi.BotAPI
+	bot                 *models.Bot
 }
 
-func NewMessageHandler(bot *tgbotapi.BotAPI, log Logger, usecasesData temporal_storage.TemporalStorage) *MessageHandler {
+func NewMessageHandler(bot *models.Bot, log Logger, usecasesData temporal_storage.TemporalStorage) *MessageHandler {
 	return &MessageHandler{
 		bot:                 bot,
 		log:                 log,
@@ -52,76 +54,71 @@ func (h *MessageHandler) RegisterUsecase(usecase usecases.Usecase, command strin
 	return nil
 }
 
-func extractCommand(text string) (string, error) {
-	err := errors.New("command not found")
-	if text[0] != '/' {
-		return "", err
-	}
-	var command string
-	for _, alpha := range text {
-		if alpha == ' ' {
-			break
-		}
-		command += string(alpha)
-	}
-	return command, nil
-}
+func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
+	message, chatID := update.Message, utils.GetChatId(update)
 
-func (h *MessageHandler) AcceptNewMessage(message *tgbotapi.Message) error {
-	id := message.Chat.ID
+	activeCommand, errActive := h.usecasesData.Get(chatID, activeCommandKey)
+	command, errCommand := utils.ExtractCommand(message)
 
-	activeCommand, errActive := h.usecasesData.Get(id, activeCommandKey)
-	command, errCommand := extractCommand(message.Text)
+	println("Active " + activeCommand)
+	println("Command " + command)
 
 	if errActive != nil {
-		// random message
-		if errCommand != nil {
-			return errors.New("need to activate separate usecase, ex. /help")
+		if errCommand == nil {
+			//textError := "Unrecognized command! Please, see /help"
+			//msgCfg := utils.GetSimpleMessage(chatID, textError)
+			//_ = h.bot.SendMessage(&msgCfg)
+			//return errors.New(textError)
+			h.usecasesData.Set(chatID, activeCommandKey, command)
 		}
 
-		// new command
-		h.usecasesData.Set(id, activeCommandKey, command)
-		return h.ExecuteUsecase(message, command)
+		return h.ExecuteUsecase(update, command)
 	}
 
-	// new command during existing command
 	if errCommand == nil {
-		err := h.usecasesData.Del(id)
-
+		// start new command
+		err := h.usecasesData.Del(chatID)
 		if err != nil {
-			h.log.Warnf("failed to delete data with id %v", id)
+			h.log.Warnf("failed to delete data with chatID %v", chatID)
 		}
 
-		h.usecasesData.Set(id, activeCommandKey, command)
-		return h.ExecuteUsecase(message, command)
+		h.usecasesData.Set(chatID, activeCommandKey, command)
+		return h.ExecuteUsecase(update, command)
 	}
 
-	return h.ExecuteUsecase(message, activeCommand)
+	return h.ExecuteUsecase(update, activeCommand)
 }
 
-func (h *MessageHandler) ExecuteUsecase(message *tgbotapi.Message, command string) error {
-	id := message.Chat.ID
+func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update, command string) error {
+	chatID := utils.GetChatId(update)
+
 	usecase, exists := h.registeredCallbacks[command]
 	if !exists {
-		h.log.Debugf("Failed to find callback for command %v", command)
-		return errors.New("unrecognised command, also create separate usecase")
+		// todo: need to be simplified
+		textError := "Unrecognized command! Please, see /help"
+		msgCfg := utils.GetSimpleMessage(chatID, textError)
+		_ = h.bot.SendMessage(&msgCfg)
+		h.EndCallback(update)
+		return errors.New(textError)
 	}
 
-	dataAccessor := temporal_storage.CreateTemporalStorageAccessor(h.usecasesData, id)
-	mes, status := usecase.Handle(message, &dataAccessor)
+	dataAccessor := temporal_storage.CreateTemporalStorageAccessor(h.usecasesData, chatID)
+	msg, status := usecase.Handle(update, &dataAccessor)
 
 	if status == usecases.Finished || status == usecases.Error {
-		err := h.usecasesData.Del(id)
+		err := h.usecasesData.Del(chatID)
 		if err != nil {
-			h.log.Warnf("failed to delete data with id %v", id)
+			h.log.Warnf("Failed to delete data with chatID %v", chatID)
 		}
 	}
 
-	_, err := h.bot.Send(mes)
-	if err != nil {
-		h.log.Error("failed to send message, chat id %v", id)
-		return errors.New("failed to send message")
-	}
+	h.EndCallback(update)
+	return h.bot.SendMessage(msg)
+}
 
-	return nil
+func (h *MessageHandler) EndCallback(update *tgbotapi.Update) {
+	// todo: to think how to handle it in correct way
+	if update.CallbackQuery != nil {
+		_, _ = h.bot.BotAPI.AnswerCallbackQuery(tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID})
+	}
 }

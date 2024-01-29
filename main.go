@@ -5,19 +5,24 @@ import (
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 	"go.uber.org/zap"
 )
 
 func main() {
 
 	bot := models.NewBot()
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
+
 	memoryStorage := temporal_storage.NewMemoryStorage()
-	messagesController := controller.NewMessageHandler(bot.BotAPI, logger.Sugar(), memoryStorage)
+	messagesController := controller.NewMessageHandler(bot, logger.Sugar(), memoryStorage)
+	weatherService := services.WeatherProvider{}
+
 	startUsecase := usecases.StartUsecase{}
 	helpUsecase := usecases.HelpUsecase{}
-	predictUsecase := usecases.PredictUsecase{}
+	predictUsecase := usecases.PredictUsecase{&weatherService}
 	updateLocationUsecase := usecases.UpdateLocationUsecase{}
 
 	messagesController.RegisterUsecase(&startUsecase, "/start")
@@ -27,13 +32,13 @@ func main() {
 
 	updates := bot.SetUpUpdates()
 	for update := range updates {
-		if update.Message == nil {
+		if update.Message == nil && update.CallbackQuery == nil {
 			continue
 		}
 
-		err := messagesController.AcceptNewMessage(update.Message)
+		err := messagesController.AcceptNewUpdate(&update)
 		if err != nil {
-			logger.Sugar().Warnf("error while handling message %v", err)
+			logger.Sugar().Warnf("Error while handling message %v", err)
 		}
 	}
 }

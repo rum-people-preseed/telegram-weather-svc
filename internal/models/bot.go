@@ -11,7 +11,7 @@ type Bot struct {
 	BotAPI *tgbotapi.BotAPI
 }
 
-func NewBot() Bot {
+func NewBot() *Bot {
 	telegramApiToken := os.Getenv("TELEGRAM_API_TOKEN")
 	if telegramApiToken == "" {
 		zap.String("error", "Failed to load env TELEGRAM_API_TOKEN")
@@ -24,10 +24,10 @@ func NewBot() Bot {
 		os.Exit(1)
 	}
 
-	apiBot.Debug = true
+	apiBot.Debug = false
 
 	zap.String("info", fmt.Sprintf("Authorized on account %s", apiBot.Self.UserName))
-	return Bot{BotAPI: apiBot}
+	return &Bot{BotAPI: apiBot}
 }
 
 func (bot *Bot) SetUpUpdates() tgbotapi.UpdatesChannel {
@@ -44,9 +44,12 @@ func (bot *Bot) SetUpUpdates() tgbotapi.UpdatesChannel {
 	return updates
 }
 
-func (bot *Bot) SendMessage(msg tgbotapi.MessageConfig) {
-	if _, err := bot.BotAPI.Send(msg); err != nil {
-		zap.String("error", fmt.Sprintf("Failed to send message %s", msg.Text))
-		os.Exit(1)
+func (bot *Bot) SendMessage(msg *tgbotapi.MessageConfig) error {
+	_, err := bot.BotAPI.Send(msg)
+	if err != nil {
+		zap.String("error", fmt.Sprintf("Failed to send message to chat with id %s", msg.ChatID))
+		return err
 	}
+	println("Sensed message is " + msg.Text)
+	return nil
 }
