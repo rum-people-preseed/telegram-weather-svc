@@ -1,52 +1,44 @@
 package main
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 	"go.uber.org/zap"
-	"os"
 )
 
 func main() {
+
+	bot := models.NewBot()
+
 	logger, _ := zap.NewProduction()
-	defer logger.Sync() // flushes buffer, if any
-	sugar := logger.Sugar()
+	defer logger.Sync()
 
-	telegramApiToken := os.Getenv("TELEGRAM_API_TOKEN")
-	if telegramApiToken == "" {
-		sugar.Error("Failed to load env TELEGRAM_API_TOKEN")
-		os.Exit(1)
-	}
+	memoryStorage := temporal_storage.NewMemoryStorage()
+	messagesController := controller.NewMessageHandler(bot, logger.Sugar(), memoryStorage)
+	weatherService := services.WeatherProvider{}
 
-	apiBot, err := tgbotapi.NewBotAPI(telegramApiToken)
-	if err != nil {
-		sugar.Error("Failed to bind to API bot with token")
-		os.Exit(1)
-	}
+	startUsecase := usecases.StartUsecase{}
+	helpUsecase := usecases.HelpUsecase{}
+	predictUsecase := usecases.PredictUsecase{&weatherService}
+	updateLocationUsecase := usecases.UpdateLocationUsecase{}
 
-	apiBot.Debug = true
+	messagesController.RegisterUsecase(&startUsecase, "/start")
+	messagesController.RegisterUsecase(&helpUsecase, "/help")
+	messagesController.RegisterUsecase(&predictUsecase, "/predict")
+	messagesController.RegisterUsecase(&updateLocationUsecase, "/update_location")
 
-	sugar.Info("Authorized on account %s", apiBot.Self.UserName)
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates, err := apiBot.GetUpdatesChan(u)
-
-	if err != nil {
-		sugar.Error("Failed to get updates chanel")
-		os.Exit(1)
-	}
-
+	updates := bot.SetUpUpdates()
 	for update := range updates {
-		if update.Message == nil { // ignore non-Message updates
+		if update.Message == nil && update.CallbackQuery == nil {
 			continue
 		}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-
-		if _, err := apiBot.Send(msg); err != nil {
-			sugar.Error("Failed to send message")
-			os.Exit(1)
+		err := messagesController.AcceptNewUpdate(&update)
+		if err != nil {
+			logger.Sugar().Warnf("Error while handling message %v", err)
 		}
 	}
 }
