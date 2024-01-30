@@ -2,128 +2,131 @@ package usecases
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
+	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/utils"
 )
 
+type PredictUsecaseFactory struct {
+}
+
+func (f *PredictUsecaseFactory) Create() c.Usecase {
+	return &PredictUsecase{
+		locationSequence: sequences.CreateGetLocationSequence(),
+		state:            InitialState,
+	}
+}
+
+func (f *PredictUsecaseFactory) Command() string {
+	return "/predict"
+}
+
 type PredictUsecase struct {
-	WeatherService services.WeatherService
+	WeatherService   services.WeatherService
+	state            string
+	locationSequence sequences.GetLocationSequence
+	country          string
+	city             string
+	date             string
 }
 
-func (u *PredictUsecase) Handle(update *tgbotapi.Update, usecaseData DataMap) (*tgbotapi.MessageConfig, Status) {
-	message := update.Message
-	chatID := utils.GetChatId(update)
+const (
+	InitialState               string = "initial_state"
+	LocationResponse                  = "location_response"
+	LocationSequenceState             = "location_sequence"
+	NextDayOrDateResponseState        = "next_day_or_date_response"
+	EnterDateResponse                 = "enter_date_response"
+)
 
-	_, err := usecaseData.Get(activatedKey)
-	if err != nil {
-		err := usecaseData.Set(activatedKey, "activated")
-		if err != nil {
-			return u.getMessageWithInternalError(chatID), Error
-		}
-
-		// todo: show current location from DB
-		msgCfg := utils.GetMessageWithButtons(chatID, "Do you wanna receive prediction based on your current location?",
-			utils.GetInlineButton("Yes", "Please use current location"),
-			utils.GetInlineButton("No", "I wanna choose myself"))
-		return &msgCfg, Continue
+func (u *PredictUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
+	switch u.state {
+	case InitialState:
+		return u.handleInitialState(update.Message)
+	case LocationResponse:
+		return u.handleLocationResponseState(update)
+	case LocationSequenceState:
+		return u.handleLocationSequenceState(update)
+	case NextDayOrDateResponseState:
+		return u.handleNextDayOrDateResponseState(update.CallbackQuery)
+	case EnterDateResponse:
+		return u.handleEnterDateResponseState(update.Message)
+	default:
+		return c.InvalidMessage(update.Message.Chat.ID), c.Error
 	}
-
-	if update.CallbackQuery != nil {
-		return u.HandleCallbacks(update.CallbackQuery, usecaseData)
-	} else {
-		_, err := usecaseData.Get(isEnterLocationModeSelectedKey)
-		if err == nil {
-
-			_, err := usecaseData.Get(countryKey)
-			if err != nil {
-
-				err := usecaseData.Set(countryKey, message.Text)
-				if err != nil {
-					return u.getMessageWithInternalError(chatID), Error
-				}
-
-				mes := utils.GetSimpleMessage(chatID, "Enter desired city:\n")
-				return &mes, Continue
-			} else {
-				_, err := usecaseData.Get(cityKey)
-				if err != nil {
-
-					err := usecaseData.Set(cityKey, message.Text)
-					if err != nil {
-						return u.getMessageWithInternalError(chatID), Error
-					}
-
-					msgCfg := utils.GetMessageWithButtons(chatID, "Please choose the day you want to receive the weather prediction:",
-						utils.GetInlineButton("Next day", "Next day"),
-						utils.GetInlineButton("Enter a date", "Enter a date"))
-					return &msgCfg, Continue
-				} else {
-					err := usecaseData.Set(dateKey, message.Text)
-					if err != nil {
-						return u.getMessageWithInternalError(chatID), Error
-					}
-					return u.getWeatherMessage(chatID, usecaseData), Finished
-				}
-			}
-		}
-
-		_, err = usecaseData.Get(isEnterDateModeSelectedKey)
-		if err == nil {
-			err := usecaseData.Set(dateKey, message.Text)
-			if err != nil {
-				return u.getMessageWithInternalError(chatID), Error
-			}
-			return u.getWeatherMessage(chatID, usecaseData), Finished
-		}
-	}
-
-	return u.getMessageWithInternalError(chatID), Finished
 }
 
-func (u *PredictUsecase) HandleCallbacks(callbackQuery *tgbotapi.CallbackQuery, usecaseData DataMap) (*tgbotapi.MessageConfig, Status) {
-	chatID, callbackData := callbackQuery.Message.Chat.ID, callbackQuery.Data
+func (u *PredictUsecase) handleInitialState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
+	mes := utils.GetMessageWithButtons(message.Chat.ID, "Do you wanna receive prediction based on your current location?",
+		utils.GetInlineButton("Yes", "Please use current location"),
+		utils.GetInlineButton("No", "I wanna choose myself"))
+
+	u.state = LocationResponse
+	return &mes, c.Continue
+}
+
+func (u *PredictUsecase) handleLocationResponseState(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
+	chatID, callbackData := update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data
 
 	switch callbackData {
 	case "Please use current location":
-		msgCfg := utils.GetMessageWithButtons(chatID, "Please choose the day you want to receive the weather prediction:",
-			utils.GetInlineButton("Next day", "Next day"),
-			utils.GetInlineButton("Enter a date", "Enter a date"))
-		return &msgCfg, Continue
+		return u.handleNextDayOrDateState(chatID)
 	case "I wanna choose myself":
-		_ = usecaseData.Set(isEnterLocationModeSelectedKey, "true")
-		msgCfg := utils.GetSimpleMessage(chatID, "Enter desired country:\n")
-		return &msgCfg, Continue
+		u.state = LocationSequenceState
+		return u.locationSequence.Handle(update)
+	default:
+		return c.InvalidMessage(update.Message.Chat.ID), c.Error
+	}
+}
+
+func (u *PredictUsecase) handleLocationSequenceState(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
+	mes, err := u.locationSequence.Handle(update)
+
+	if err == c.Continue {
+		return mes, err
+	}
+	if err == c.Error {
+		// todo handle error state
+	}
+
+	return u.handleNextDayOrDateState(update.Message.Chat.ID)
+}
+func (u *PredictUsecase) handleNextDayOrDateState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
+	mes := utils.GetMessageWithButtons(chatID, "Please choose the day you want to receive the weather prediction:",
+		utils.GetInlineButton("Next day", "Next day"),
+		utils.GetInlineButton("Enter a date", "Enter a date"))
+	u.state = NextDayOrDateResponseState
+	return &mes, c.Continue
+}
+
+func (u *PredictUsecase) handleNextDayOrDateResponseState(callbackQuery *tgbotapi.CallbackQuery) (*tgbotapi.MessageConfig, c.Status) {
+	chatID, callbackData := callbackQuery.Message.Chat.ID, callbackQuery.Data
+
+	switch callbackData {
 	case "Next day":
-		return u.getWeatherMessage(chatID, usecaseData), Finished
+		return u.RequestWeatherForecast(chatID)
 	case "Enter a date":
-		_ = usecaseData.Set(isEnterDateModeSelectedKey, "true")
-		msgCfg := utils.GetSimpleMessage(chatID, "Enter desired day:\n")
-		return &msgCfg, Continue
+		return u.handleEnterDateState(chatID)
+	default:
+		return c.InvalidMessage(chatID), c.Error
 	}
-
-	return u.getMessageWithInternalError(chatID), Error
 }
 
-func (u *PredictUsecase) mapUsecaseDataToWeatherData(usecaseData DataMap) models.WeatherData {
-	country, _ := usecaseData.Get(countryKey)
-	city, _ := usecaseData.Get(cityKey)
-	date, _ := usecaseData.Get(dateKey)
-	return models.WeatherData{Country: country, City: city, Date: utils.MapStringToData(date)}
+func (u *PredictUsecase) handleEnterDateState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
+	mes := utils.GetSimpleMessage(chatID, "Enter desired day:\n")
+	u.state = EnterDateResponse
+	return &mes, c.Continue
 }
 
-func (u *PredictUsecase) getWeather(usecaseData DataMap) (string, error) {
-	return u.WeatherService.GetWeather(u.mapUsecaseDataToWeatherData(usecaseData))
+func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
+	// todo validate and translate message
+	u.date = message.Text
+	return u.RequestWeatherForecast(message.Chat.ID)
 }
 
-func (u *PredictUsecase) getWeatherMessage(chatID int64, usecaseData DataMap) *tgbotapi.MessageConfig {
-	weather, err := u.getWeather(usecaseData)
-	if err != nil {
-		return u.getMessageWithInternalError(chatID)
-	}
-
-	msgCfg := tgbotapi.NewMessage(chatID, weather)
-	return &msgCfg
+func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
+	mes := utils.GetSimpleMessage(chatID, "Here is your weather forecast")
+	return &mes, c.Finished
 }
 
 func (u *PredictUsecase) getMessageWithInternalError(chatID int64) *tgbotapi.MessageConfig {

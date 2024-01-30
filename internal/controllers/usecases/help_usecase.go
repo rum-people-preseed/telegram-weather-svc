@@ -1,11 +1,25 @@
 package usecases
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+)
+
+type HelpUsecaseFactory struct {
+}
+
+func (f *HelpUsecaseFactory) Create() controller.Usecase {
+	return &HelpUsecase{}
+}
+
+func (f *HelpUsecaseFactory) Command() string {
+	return "/help"
+}
 
 type HelpUsecase struct {
 }
 
-func (u *HelpUsecase) Handle(update *tgbotapi.Update, usecaseData DataMap) (*tgbotapi.MessageConfig, Status) {
+func (u *HelpUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, controller.Status) {
 	message := update.Message
 	mes := tgbotapi.NewMessage(message.Chat.ID,
 		"This bot can help you to get information about weather conditions at any region on any date\n\n"+
@@ -13,5 +27,5 @@ func (u *HelpUsecase) Handle(update *tgbotapi.Update, usecaseData DataMap) (*tgb
 			"/help - show this message\n"+
 			"/start - show introduction message\n"+
 			"/update_location - update default location")
-	return &mes, Finished
+	return &mes, controller.Finished
 }

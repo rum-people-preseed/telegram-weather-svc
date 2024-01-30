@@ -4,8 +4,6 @@ import (
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 	"go.uber.org/zap"
 )
 
@@ -16,19 +14,18 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	memoryStorage := temporal_storage.NewMemoryStorage()
-	messagesController := controller.NewMessageHandler(bot, logger.Sugar(), memoryStorage)
-	weatherService := services.WeatherProvider{}
+	//memoryStorage := temporal_storage.NewMemoryStorage()
+	messagesController := controller.NewMessageHandler(bot, logger.Sugar())
+	//weatherService := services.WeatherProvider{}
+	helpFactory := usecases.HelpUsecaseFactory{}
+	updateLocationFactory := usecases.UpdateLocationUsecaseFactory{}
+	startFactory := usecases.StartUsecaseFactory{}
+	predictFactory := usecases.PredictUsecaseFactory{}
 
-	startUsecase := usecases.StartUsecase{}
-	helpUsecase := usecases.HelpUsecase{}
-	predictUsecase := usecases.PredictUsecase{&weatherService}
-	updateLocationUsecase := usecases.UpdateLocationUsecase{}
-
-	messagesController.RegisterUsecase(&startUsecase, "/start")
-	messagesController.RegisterUsecase(&helpUsecase, "/help")
-	messagesController.RegisterUsecase(&predictUsecase, "/predict")
-	messagesController.RegisterUsecase(&updateLocationUsecase, "/update_location")
+	messagesController.RegisterUsecaseFactory(&helpFactory)
+	messagesController.RegisterUsecaseFactory(&updateLocationFactory)
+	messagesController.RegisterUsecaseFactory(&startFactory)
+	messagesController.RegisterUsecaseFactory(&predictFactory)
 
 	updates := bot.SetUpUpdates()
 	for update := range updates {
