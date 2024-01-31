@@ -4,6 +4,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/location_chooser"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
 
 const (
@@ -13,14 +15,16 @@ const (
 )
 
 type GetLocationSequence struct {
+	geoService  services.GeoService
 	state       string
 	countryName string
 	cityName    string
 }
 
-func CreateGetLocationSequence() GetLocationSequence {
+func CreateGetLocationSequence(geoService services.GeoService) GetLocationSequence {
 	return GetLocationSequence{
-		state: InitialState,
+		state:      InitialState,
+		geoService: geoService,
 	}
 }
 
@@ -46,24 +50,35 @@ func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.Message
 }
 
 func (s *GetLocationSequence) handleInitialState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := tgbotapi.NewMessage(chatID, "Enter desired country:\n")
+	mes := tgbotapi.NewMessage(chatID, location_chooser.ResponseEnterCountry)
 	s.state = GettingCountryState
 
 	return &mes, c.Continue
 }
 
 func (s *GetLocationSequence) handleGettingCountry(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	// todo validate country
 	s.countryName = message.Text
-	mes := tgbotapi.NewMessage(message.Chat.ID, "Enter desired city:\n")
+
+	err := s.geoService.ValidateCountry(s.countryName)
+	if err != nil {
+		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CountryValidationError)
+		return &errMsg, c.Error
+	}
+
+	mes := tgbotapi.NewMessage(message.Chat.ID, location_chooser.ResponseEnterCity)
 	s.state = GettingCityState
 
 	return &mes, c.Continue
 }
 
 func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	// todo validate city
 	s.cityName = message.Text
+
+	err := s.geoService.ValidateCity(s.cityName, s.countryName)
+	if err != nil {
+		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CityValidationError)
+		return &errMsg, c.Error
+	}
 
 	return nil, c.Finished
 }
