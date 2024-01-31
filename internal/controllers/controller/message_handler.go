@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/repositories/temporal_storage"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/utils"
 )
 
@@ -26,93 +24,78 @@ type Logger interface {
 	Fatalf(template string, args ...interface{})
 }
 
-const activeCommandKey = "active_command"
-
 type MessageHandler struct {
-	registeredCallbacks map[string]usecases.Usecase
-	usecasesData        temporal_storage.TemporalStorage
+	registeredFactories map[string]UsecaseFactory
+	activeUsecases      map[int64]Usecase
 	log                 Logger
 	bot                 *models.Bot
 }
 
-func NewMessageHandler(bot *models.Bot, log Logger, usecasesData temporal_storage.TemporalStorage) *MessageHandler {
+func NewMessageHandler(bot *models.Bot, log Logger) *MessageHandler {
 	return &MessageHandler{
 		bot:                 bot,
 		log:                 log,
-		usecasesData:        usecasesData,
-		registeredCallbacks: make(map[string]usecases.Usecase),
+		activeUsecases:      make(map[int64]Usecase),
+		registeredFactories: make(map[string]UsecaseFactory),
 	}
 }
 
-func (h *MessageHandler) RegisterUsecase(usecase usecases.Usecase, command string) error {
-	_, ok := h.registeredCallbacks[command]
+func (h *MessageHandler) RegisterUsecaseFactory(usecaseFactory UsecaseFactory) error {
+	command := usecaseFactory.Command()
+	_, ok := h.registeredFactories[command]
 	if ok {
-		return errors.New(fmt.Sprintf("Callback for command %v is already registered", command))
+		return errors.New(fmt.Sprintf("UsecaseFactory for command %v is already registered", command))
 	}
 
-	h.registeredCallbacks[command] = usecase
+	h.registeredFactories[command] = usecaseFactory
+	return nil
+}
+
+func (h *MessageHandler) ActivateUsecase(chatID int64, command string) error {
+	factory, exists := h.registeredFactories[command]
+	if !exists {
+		h.log.Warnf("factory for command %v does not exists", command)
+		return errors.New("factory does not exists")
+	}
+
+	h.activeUsecases[chatID] = factory.Create()
 	return nil
 }
 
 func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 	message, chatID := update.Message, utils.GetChatId(update)
+	command, err := utils.ExtractCommand(message)
+	gotNewCommand := err == nil
 
-	activeCommand, errActive := h.usecasesData.Get(chatID, activeCommandKey)
-	command, errCommand := utils.ExtractCommand(message)
-
-	println("Active " + activeCommand)
-	println("Command " + command)
-
-	if errActive != nil {
-		if errCommand == nil {
-			//textError := "Unrecognized command! Please, see /help"
-			//msgCfg := utils.GetSimpleMessage(chatID, textError)
-			//_ = h.bot.SendMessage(&msgCfg)
-			//return errors.New(textError)
-			h.usecasesData.Set(chatID, activeCommandKey, command)
-		}
-
-		return h.ExecuteUsecase(update, command)
-	}
-
-	if errCommand == nil {
-		// start new command
-		err := h.usecasesData.Del(chatID)
+	if gotNewCommand {
+		err = h.ActivateUsecase(chatID, command)
 		if err != nil {
-			h.log.Warnf("failed to delete data with chatID %v", chatID)
+			h.log.Warnf("failed to activate usecase %v", err)
+			return errors.New("failed to activate usecase")
 		}
-
-		h.usecasesData.Set(chatID, activeCommandKey, command)
-		return h.ExecuteUsecase(update, command)
 	}
 
-	return h.ExecuteUsecase(update, activeCommand)
+	return h.ExecuteUsecase(update)
 }
 
-func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update, command string) error {
+func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 	chatID := utils.GetChatId(update)
+	activeUsecase, exists := h.activeUsecases[chatID]
 
-	usecase, exists := h.registeredCallbacks[command]
 	if !exists {
-		// todo: need to be simplified
-		textError := "Unrecognized command! Please, see /help"
-		msgCfg := utils.GetSimpleMessage(chatID, textError)
-		_ = h.bot.SendMessage(&msgCfg)
-		h.EndCallback(update)
-		return errors.New(textError)
+		h.log.Warnf("usecase does not exists %v", chatID)
+		return nil
 	}
 
-	dataAccessor := temporal_storage.CreateTemporalStorageAccessor(h.usecasesData, chatID)
-	msg, status := usecase.Handle(update, &dataAccessor)
+	msg, status := activeUsecase.Handle(update)
 
-	if status == usecases.Finished || status == usecases.Error {
-		err := h.usecasesData.Del(chatID)
-		if err != nil {
-			h.log.Warnf("Failed to delete data with chatID %v", chatID)
-		}
+	if status == Finished || status == Error {
+		delete(h.activeUsecases, chatID)
 	}
 
-	h.EndCallback(update)
+	//what is that?
+	//h.EndCallback(update)
+
 	return h.bot.SendMessage(msg)
 }
 
