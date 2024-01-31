@@ -4,8 +4,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_constructor"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/utils"
 )
 
 type PredictUsecaseFactory struct {
@@ -57,9 +57,10 @@ func (u *PredictUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfi
 }
 
 func (u *PredictUsecase) handleInitialState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	mes := utils.GetMessageWithButtons(message.Chat.ID, "Do you wanna receive prediction based on your current location?",
-		utils.GetInlineButton("Yes", "Please use current location"),
-		utils.GetInlineButton("No", "I wanna choose myself"))
+	mes := message_constructor.MakeMessageWithButtons(message.Chat.ID,
+		"Do you wanna receive prediction based on your current location?",
+		message_constructor.MakeInlineButton("Yes", "Please use current location"),
+		message_constructor.MakeInlineButton("No", "I wanna choose myself"))
 
 	u.state = LocationResponse
 	return &mes, c.Continue
@@ -92,9 +93,9 @@ func (u *PredictUsecase) handleLocationSequenceState(update *tgbotapi.Update) (*
 	return u.handleNextDayOrDateState(update.Message.Chat.ID)
 }
 func (u *PredictUsecase) handleNextDayOrDateState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := utils.GetMessageWithButtons(chatID, "Please choose the day you want to receive the weather prediction:",
-		utils.GetInlineButton("Next day", "Next day"),
-		utils.GetInlineButton("Enter a date", "Enter a date"))
+	mes := message_constructor.MakeMessageWithButtons(chatID, "Please choose the day you want to receive the weather prediction:",
+		message_constructor.MakeInlineButton("Next day", "Next day"),
+		message_constructor.MakeInlineButton("Enter a date", "Enter a date"))
 	u.state = NextDayOrDateResponseState
 	return &mes, c.Continue
 }
@@ -113,7 +114,7 @@ func (u *PredictUsecase) handleNextDayOrDateResponseState(callbackQuery *tgbotap
 }
 
 func (u *PredictUsecase) handleEnterDateState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := utils.GetSimpleMessage(chatID, "Enter desired day:\n")
+	mes := message_constructor.MakeTextMessage(chatID, "Enter desired day:\n")
 	u.state = EnterDateResponse
 	return &mes, c.Continue
 }
@@ -125,7 +126,7 @@ func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message)
 }
 
 func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := utils.GetSimpleMessage(chatID, "Here is your weather forecast")
+	mes := message_constructor.MakeTextMessage(chatID, "Here is your weather forecast")
 	return &mes, c.Finished
 }
 
