@@ -4,23 +4,22 @@ import (
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 	"go.uber.org/zap"
 )
 
 func main() {
-
-	bot := models.NewBot()
-
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	//memoryStorage := temporal_storage.NewMemoryStorage()
+	bot := models.NewBot(logger.Sugar())
+
 	messagesController := controller.NewMessageHandler(bot, logger.Sugar())
-	//weatherService := services.WeatherProvider{}
 	helpFactory := usecases.HelpUsecaseFactory{}
 	updateLocationFactory := usecases.UpdateLocationUsecaseFactory{}
 	startFactory := usecases.StartUsecaseFactory{}
-	predictFactory := usecases.PredictUsecaseFactory{}
+	weatherService := services.WeatherProvider{}
+	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService}
 
 	messagesController.RegisterUsecaseFactory(&helpFactory)
 	messagesController.RegisterUsecaseFactory(&updateLocationFactory)

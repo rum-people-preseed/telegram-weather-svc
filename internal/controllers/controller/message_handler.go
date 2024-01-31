@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/utils"
 )
 
 type Logger interface {
@@ -63,8 +63,8 @@ func (h *MessageHandler) ActivateUsecase(chatID int64, command string) error {
 }
 
 func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
-	message, chatID := update.Message, utils.GetChatId(update)
-	command, err := utils.ExtractCommand(message)
+	message, chatID := update.Message, message_reader.GetChatId(update)
+	command, err := message_reader.GetCommand(message)
 	gotNewCommand := err == nil
 
 	if gotNewCommand {
@@ -79,7 +79,7 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 }
 
 func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
-	chatID := utils.GetChatId(update)
+	chatID := message_reader.GetChatId(update)
 	activeUsecase, exists := h.activeUsecases[chatID]
 
 	if !exists {

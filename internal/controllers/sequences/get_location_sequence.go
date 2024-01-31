@@ -3,6 +3,7 @@ package sequences
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 )
 
 const (
@@ -34,7 +35,7 @@ func (s *GetLocationSequence) GetCountryName() string {
 func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
 	switch s.state {
 	case InitialState:
-		return s.handleInitialState(extractChatId(update))
+		return s.handleInitialState(message_reader.GetChatId(update))
 	case GettingCountryState:
 		return s.handleGettingCountry(update.Message)
 	case GettingCityState:
@@ -65,16 +66,4 @@ func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgb
 	s.cityName = message.Text
 
 	return nil, c.Finished
-}
-
-func extractChatId(update *tgbotapi.Update) int64 {
-	if update.Message != nil {
-		return update.Message.Chat.ID
-	}
-
-	if update.CallbackQuery != nil {
-		return update.CallbackQuery.Message.Chat.ID
-	}
-
-	return 0
 }
