@@ -64,7 +64,7 @@ func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgb
 	// todo validate city
 	s.cityName = message.Text
 
-	return c.InvalidMessage(0), c.Finished
+	return nil, c.Finished
 }
 
 func extractChatId(update *tgbotapi.Update) int64 {

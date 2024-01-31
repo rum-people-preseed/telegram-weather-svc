@@ -95,8 +95,11 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 
 	//what is that?
 	//h.EndCallback(update)
+	if msg != nil {
+		return h.bot.SendMessage(msg)
+	}
 
-	return h.bot.SendMessage(msg)
+	return nil
 }
 
 func (h *MessageHandler) EndCallback(update *tgbotapi.Update) {
