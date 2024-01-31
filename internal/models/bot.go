@@ -1,33 +1,47 @@
 package models
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"go.uber.org/zap"
 	"os"
 )
 
-type Bot struct {
-	BotAPI *tgbotapi.BotAPI
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+	Panic(args ...interface{})
+	Fatal(args ...interface{})
+
+	Debugf(template string, args ...interface{})
+	Infof(template string, args ...interface{})
+	Warnf(template string, args ...interface{})
+	Errorf(template string, args ...interface{})
+	Panicf(template string, args ...interface{})
+	Fatalf(template string, args ...interface{})
 }
 
-func NewBot() *Bot {
+type Bot struct {
+	BotAPI *tgbotapi.BotAPI
+	log    Logger
+}
+
+func NewBot(logger Logger) *Bot {
 	telegramApiToken := os.Getenv("TELEGRAM_API_TOKEN")
 	if telegramApiToken == "" {
-		zap.String("error", "Failed to load env TELEGRAM_API_TOKEN")
+		logger.Errorf("Failed to load env TELEGRAM_API_TOKEN")
 		os.Exit(1)
 	}
 
 	apiBot, err := tgbotapi.NewBotAPI(telegramApiToken)
 	if err != nil {
-		zap.String("error", "Failed to bind to API bot with token")
+		logger.Errorf("Failed to bind to API bot with token")
 		os.Exit(1)
 	}
 
 	apiBot.Debug = false
-
-	zap.String("info", fmt.Sprintf("Authorized on account %s", apiBot.Self.UserName))
-	return &Bot{BotAPI: apiBot}
+	logger.Infof("Authorized on account %s", apiBot.Self.UserName)
+	return &Bot{BotAPI: apiBot, log: logger}
 }
 
 func (bot *Bot) SetUpUpdates() tgbotapi.UpdatesChannel {
@@ -36,20 +50,21 @@ func (bot *Bot) SetUpUpdates() tgbotapi.UpdatesChannel {
 
 	updates, err := bot.BotAPI.GetUpdatesChan(u)
 	if err != nil {
-		zap.String("error", "Failed to get updates chanel")
+		bot.log.Errorf("Failed to get updates chanel")
 		os.Exit(1)
 	}
 
-	zap.String("info", "Bot is ready to receive updates from channel")
+	bot.log.Infof("Bot is ready to receive updates from channel")
 	return updates
 }
 
 func (bot *Bot) SendMessage(msg *tgbotapi.MessageConfig) error {
 	_, err := bot.BotAPI.Send(msg)
 	if err != nil {
-		zap.String("error", fmt.Sprintf("Failed to send message to chat with id %s", msg.ChatID))
+		bot.log.Errorf("Failed to send message to chat with id %s", msg.ChatID)
 		return err
 	}
-	println("Sensed message is " + msg.Text)
+
+	println("Sent message is " + msg.Text)
 	return nil
 }

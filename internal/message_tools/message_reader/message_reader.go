@@ -1,4 +1,4 @@
-package utils
+package message_reader
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ func GetChatId(update *tgbotapi.Update) int64 {
 	return chatID
 }
 
-func ExtractCommand(msg *tgbotapi.Message) (string, error) {
+func GetCommand(msg *tgbotapi.Message) (string, error) {
 	if msg == nil {
 		return "", errors.New("Empty message")
 	}

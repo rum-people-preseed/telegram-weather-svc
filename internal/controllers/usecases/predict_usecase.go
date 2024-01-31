@@ -4,17 +4,20 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_constructor"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_constructor"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
 
 type PredictUsecaseFactory struct {
+	WeatherService services.WeatherService
 }
 
 func (f *PredictUsecaseFactory) Create() c.Usecase {
 	return &PredictUsecase{
 		locationSequence: sequences.CreateGetLocationSequence(),
 		state:            InitialState,
+		weatherService:   f.WeatherService,
 	}
 }
 
@@ -23,7 +26,7 @@ func (f *PredictUsecaseFactory) Command() string {
 }
 
 type PredictUsecase struct {
-	WeatherService   services.WeatherService
+	weatherService   services.WeatherService
 	state            string
 	locationSequence sequences.GetLocationSequence
 	country          string
@@ -126,11 +129,11 @@ func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message)
 }
 
 func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := message_constructor.MakeTextMessage(chatID, "Here is your weather forecast")
+	weatherData := models.WeatherData{Country: u.country, City: u.city}
+	responseForecast, err := u.weatherService.GetWeather(weatherData)
+	if err != nil {
+		return c.InvalidMessage(chatID), c.Error
+	}
+	mes := message_constructor.MakeTextMessage(chatID, responseForecast)
 	return &mes, c.Finished
-}
-
-func (u *PredictUsecase) getMessageWithInternalError(chatID int64) *tgbotapi.MessageConfig {
-	invalidMsg := tgbotapi.NewMessage(chatID, "Internal error")
-	return &invalidMsg
 }
