@@ -5,14 +5,16 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
 
 type UpdateLocationUsecaseFactory struct {
+	GeoService services.GeoService
 }
 
 func (f *UpdateLocationUsecaseFactory) Create() controller.Usecase {
 	return &UpdateLocationUsecase{
-		locationSequence: sequences.CreateGetLocationSequence(),
+		locationSequence: sequences.CreateGetLocationSequence(f.GeoService),
 	}
 }
 

@@ -26,6 +26,7 @@ func (u *HelpUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, 
 			"List of available commands:\n"+
 			"/help - show this message\n"+
 			"/start - show introduction message\n"+
+			"/predict - get weather forecast \n"+
 			"/update_location - update default location")
 	return &mes, controller.Finished
 }

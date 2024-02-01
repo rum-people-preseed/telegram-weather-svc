@@ -75,6 +75,7 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 		}
 	}
 
+	defer h.EndCallback(update)
 	return h.ExecuteUsecase(update)
 }
 
@@ -84,7 +85,7 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 
 	if !exists {
 		h.log.Warnf("usecase does not exists %v", chatID)
-		return nil
+		return errors.New("usecase does not exists")
 	}
 
 	msg, status := activeUsecase.Handle(update)
@@ -93,8 +94,6 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 		delete(h.activeUsecases, chatID)
 	}
 
-	//what is that?
-	//h.EndCallback(update)
 	if msg != nil {
 		return h.bot.SendMessage(msg)
 	}
@@ -102,9 +101,10 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 	return nil
 }
 
-func (h *MessageHandler) EndCallback(update *tgbotapi.Update) {
-	// todo: to think how to handle it in correct way
+func (h *MessageHandler) EndCallback(update *tgbotapi.Update) error {
+	var err error
 	if update.CallbackQuery != nil {
-		_, _ = h.bot.BotAPI.AnswerCallbackQuery(tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID})
+		_, err = h.bot.BotAPI.AnswerCallbackQuery(tgbotapi.CallbackConfig{CallbackQueryID: update.CallbackQuery.ID})
 	}
+	return err
 }
