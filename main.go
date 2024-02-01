@@ -39,10 +39,5 @@ func main() {
 			logger.Sugar().Warnf("Error while handling message %v", err)
 			_ = bot.SendMessage(controller.InvalidMessage(message_reader.GetChatId(&update)))
 		}
-
-		err = messagesController.EndCallback(&update)
-		if err != nil {
-			logger.Sugar().Warnf("Error while ending callback %v", err)
-		}
 	}
 }

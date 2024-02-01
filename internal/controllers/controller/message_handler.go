@@ -75,6 +75,7 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 		}
 	}
 
+	defer h.EndCallback(update)
 	return h.ExecuteUsecase(update)
 }
 
