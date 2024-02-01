@@ -39,7 +39,6 @@ func (u *UpdateLocationUsecase) HandleInitialState(update *tgbotapi.Update) (*tg
 	}
 	if err == controller.Error {
 		// todo handle error state
-		return mes, controller.Continue
 	}
 
 	message := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(

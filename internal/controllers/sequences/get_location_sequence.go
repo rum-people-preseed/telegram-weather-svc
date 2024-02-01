@@ -62,7 +62,7 @@ func (s *GetLocationSequence) handleGettingCountry(message *tgbotapi.Message) (*
 	err := s.geoService.ValidateCountry(s.countryName)
 	if err != nil {
 		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CountryValidationError)
-		return &errMsg, c.Error
+		return &errMsg, c.Continue
 	}
 
 	mes := tgbotapi.NewMessage(message.Chat.ID, location_chooser.ResponseEnterCity)
@@ -77,7 +77,7 @@ func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgb
 	err := s.geoService.ValidateCity(s.cityName, s.countryName)
 	if err != nil {
 		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CityValidationError)
-		return &errMsg, c.Error
+		return &errMsg, c.Continue
 	}
 
 	return nil, c.Finished
