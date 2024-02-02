@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/usecases"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/date_parser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
@@ -17,7 +18,8 @@ func main() {
 	helpFactory := usecases.HelpUsecaseFactory{}
 	startFactory := usecases.StartUsecaseFactory{}
 	weatherService := services.NewWeatherPredictorService("http://localhost:8000", logger)
-	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService}
+	dateParser := date_parser.MultiformatDateParser{}
+	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService,  DateParser: &dateParser}
 
 	_ = messagesController.RegisterUsecaseFactory(&helpFactory)
 	_ = messagesController.RegisterUsecaseFactory(&startFactory)
