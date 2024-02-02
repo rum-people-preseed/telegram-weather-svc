@@ -3,19 +3,29 @@ package models
 import "time"
 
 type WeatherData struct {
-	City    string
-	Country string
-	Lat     string
-	Lon     string
-	Date    time.Time
+	City        string
+	Country     string
+	Coordinates Coordinates
+	Date        time.Time
 }
 
-func NewWeatherData(city, country, lat, lon string, date time.Time) WeatherData {
+type Coordinates struct {
+	Lat string
+	Lon string
+}
+
+func NewCoordinates(lat, lon string) Coordinates {
+	return Coordinates{
+		Lat: lat,
+		Lon: lon,
+	}
+}
+
+func NewWeatherData(city, country string, coordinates Coordinates, date time.Time) WeatherData {
 	return WeatherData{
-		City:    city,
-		Country: country,
-		Lat:     lat,
-		Lon:     lon,
-		Date:    date,
+		City:        city,
+		Country:     country,
+		Coordinates: coordinates,
+		Date:        date,
 	}
 }

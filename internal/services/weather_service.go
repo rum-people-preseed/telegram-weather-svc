@@ -3,11 +3,8 @@ package services
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -54,16 +51,17 @@ func (w *WeatherPredictorService) GetParamsFromWeatherData(weatherData models.We
 		utils.NewHTTPParam("city", weatherData.City),
 		utils.NewHTTPParam("country", weatherData.Country),
 		utils.NewHTTPParam("date", w.GetDateFormatted(weatherData.Date)),
-		utils.NewHTTPParam("latitude", weatherData.Lat),
-		utils.NewHTTPParam("longtitude", weatherData.Lon),
+		utils.NewHTTPParam("latitude", weatherData.Coordinates.Lat),
+		utils.NewHTTPParam("longtitude", weatherData.Coordinates.Lon),
 	}
 	return params
 }
 
 func (w *WeatherPredictorService) GetTemperatureAndChart(weatherData models.WeatherData) (float64, string, error) {
 	avrgTemp, chartBase64 := 0.0, ""
+	temperatureURL := w.URL + "/temperature/"
 
-	svcResponse, err := w.SendGetRequestWithParams(weatherData)
+	svcResponse, err := SendGetRequestWithParams(temperatureURL, w.GetParamsFromWeatherData(weatherData)...)
 	if err != nil {
 		w.log.Error(err)
 		return avrgTemp, chartBase64, errors.New("failing get info from service")
@@ -84,29 +82,6 @@ func (w *WeatherPredictorService) GetTemperatureAndChart(weatherData models.Weat
 	return avrgTemp, chartBase64, nil
 }
 
-func (w *WeatherPredictorService) SendGetRequestWithParams(weatherData models.WeatherData) (map[string]interface{}, error) {
-	url := utils.BuildURL(w.URL+"/temperature/", w.GetParamsFromWeatherData(weatherData)...)
-	w.log.Infof("URl to weather service service is sent. URL - " + url)
-	resp, err := http.Get(url)
-
-	if err != nil {
-		return nil, errors.New("failing get info from service")
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.New("failing read response from service")
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, errors.New("error decoding response from service")
-	}
-
-	return result, nil
-}
-
 func (w *WeatherPredictorService) GetDateFormatted(time time.Time) string {
-	return time.Format("2006-02-01 15:04:05")
+	return time.Format("2006-02-01")
 }

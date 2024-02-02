@@ -36,7 +36,8 @@ func (s *GeoNameService) ValidateCountry(country string) error {
 	featureClassParam := utils.NewHTTPParam("featureClass", "A")
 	nameEqualsParam := utils.NewHTTPParam("name_equals", country)
 
-	jsonResult, err := s.SendGetRequestWithParams(featureClassParam, nameEqualsParam)
+	s.log.Infof("URl to Geo service is sent. URL - " + s.preparedURL)
+	jsonResult, err := SendGetRequestWithParams(s.preparedURL, featureClassParam, nameEqualsParam)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func (s *GeoNameService) ValidateCity(city string, country string) (string, stri
 	nameEqualsParam := utils.NewHTTPParam("name_equals", city)
 	countryParam := utils.NewHTTPParam("country", countryCode)
 
-	jsonResult, err := s.SendGetRequestWithParams(featureClassParam, nameEqualsParam, countryParam)
+	jsonResult, err := SendGetRequestWithParams(s.preparedURL, featureClassParam, nameEqualsParam, countryParam)
 	if err != nil {
 		return lat, lon, err
 	}
@@ -78,10 +79,10 @@ func (s *GeoNameService) ValidateCity(city string, country string) (string, stri
 	return lat, lon, err
 }
 
-func (s *GeoNameService) SendGetRequestWithParams(params ...*utils.HTTPParam) (map[string]interface{}, error) {
-	url := utils.BuildURL(s.preparedURL, params...)
+func SendGetRequestWithParams(URl string, params ...*utils.HTTPParam) (map[string]interface{}, error) {
+	url := utils.BuildURL(URl, params...)
+	// todo: add logging of url
 	resp, err := http.Get(url)
-	s.log.Infof("URl to Geodata service is sent. URL - " + url)
 
 	if err != nil {
 		return nil, errors.New("failing get info from service")
