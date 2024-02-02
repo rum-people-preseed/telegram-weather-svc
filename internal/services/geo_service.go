@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"os"
+	"strconv"
 
 	"github.com/biter777/countries"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
@@ -10,79 +11,91 @@ import (
 )
 
 type GeoService interface {
-	ValidateCountry(country string) error
-	ValidateCity(city string, country string) (models.Coordinates, error)
+	ValidateCountry(country string) (string, error)
+	ValidateCity(city string, country string) (string, models.Coordinates, error)
 }
 
 type GeoNameService struct {
 	preparedURL string
 	sender      Sender
 	log         models.Logger
+	fuzzy       string
 }
 
-func NewGeoNameService(sender Sender, logger models.Logger) GeoNameService {
+func NewGeoNameService(sender Sender, logger models.Logger, fuzzy float64) GeoNameService {
 	baseURL := "http://api.geonames.org/searchJSON"
 	apiKey := os.Getenv("GEO_NAME_SERVICE_USERNAME")
 	apiKeyParam := utils.NewHTTPParam("username", apiKey)
 	maxRowsParam := utils.NewHTTPParam("maxRows", "1")
 	preparedURL := utils.BuildURL(baseURL, apiKeyParam, maxRowsParam)
-	return GeoNameService{preparedURL: preparedURL, sender: sender, log: logger}
+	fuzzyStr := strconv.FormatFloat(fuzzy, 'g', 2, 64)
+	return GeoNameService{sender: sender, preparedURL: preparedURL, log: logger, fuzzy: fuzzyStr}
 }
 
-func (s *GeoNameService) ValidateCountry(country string) error {
+func (s *GeoNameService) ValidateCountry(country string) (string, error) {
 	featureClassParam := utils.NewHTTPParam("featureClass", "A")
 	nameEqualsParam := utils.NewHTTPParam("name_equals", country)
+	fuzzyParam := utils.NewHTTPParam("fuzzy", s.fuzzy)
 
-	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam)
+	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam, fuzzyParam)
 	response, err := s.sender.SendGetRequest(URL)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	json, err := utils.DecodeBytesToMapJson(response)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.ValidateTotalResultsCount(json)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	array := json["geonames"].([]interface{})
+	obj := array[0].(map[string]interface{})
+	name := obj["name"].(string)
+
+	return name, nil
 }
 
-func (s *GeoNameService) ValidateCity(city string, country string) (models.Coordinates, error) {
+func (s *GeoNameService) ValidateCity(city string, country string) (string, models.Coordinates, error) {
 	coordinates := models.Coordinates{}
 
 	countryName := countries.ByName(country)
 	if countryName == countries.Unknown {
-		return coordinates, errors.New("country doesn't exist")
+		return "", coordinates, errors.New("country doesn't exist")
 	}
 	countryCode := countryName.Alpha2()
 
 	featureClassParam := utils.NewHTTPParam("featureClass", "P")
 	nameEqualsParam := utils.NewHTTPParam("name_equals", city)
 	countryParam := utils.NewHTTPParam("country", countryCode)
+	fuzzyParam := utils.NewHTTPParam("fuzzy", s.fuzzy)
 
-	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam, countryParam)
+	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam, countryParam, fuzzyParam)
 	response, err := s.sender.SendGetRequest(URL)
 	if err != nil {
-		return coordinates, errors.New("failing get data from service")
+		return "", coordinates, errors.New("failing get data from service")
 	}
 
 	json, err := utils.DecodeBytesToMapJson(response)
 	if err != nil {
-		return coordinates, err
+		return "", coordinates, err
 	}
 
 	err = s.ValidateTotalResultsCount(json)
 	if err != nil {
-		return coordinates, err
+		return "", coordinates, err
 	}
 
+	array := json["geonames"].([]interface{})
+	obj := array[0].(map[string]interface{})
+	name := obj["name"].(string)
+
 	coordinates, err = s.GetCoordinates(json)
-	return coordinates, err
+	return name, coordinates, err
 }
 
 func (s *GeoNameService) ValidateTotalResultsCount(json map[string]interface{}) error {

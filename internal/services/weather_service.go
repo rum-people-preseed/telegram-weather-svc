@@ -43,7 +43,7 @@ func (w *WeatherPredictorService) GetWeatherPredictionMessage(weatherData models
 	image := tgbotapi.FileBytes{Name: "chart.png", Bytes: imageBuffer.Bytes()}
 
 	photoConfig := tgbotapi.NewPhotoUpload(chatID, image)
-	photoConfig.Caption = fmt.Sprintf("Average temperature is %v°", avrgTemp)
+	photoConfig.Caption = fmt.Sprintf("Average temperature is %v°", fmt.Sprintf("%.2f", avrgTemp))
 	return photoConfig, nil
 }
 
