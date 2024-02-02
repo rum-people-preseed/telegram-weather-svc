@@ -1,4 +1,4 @@
-package unit
+package test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
-	"github.com/rum-people-preseed/telegram-weather-svc/test/unit/mocks"
+	"github.com/rum-people-preseed/telegram-weather-svc/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
