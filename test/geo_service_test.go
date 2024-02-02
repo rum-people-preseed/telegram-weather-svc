@@ -15,48 +15,46 @@ func TestValidateCountryPass(t *testing.T) {
 
 	mockSender.On("SendGetRequest", mock.Anything).Return([]byte(getMockedPassResponse()), nil)
 
-	err := service.ValidateCountry("TestCountry")
+	countryName, err := service.ValidateCountry("TestCountry")
 
 	assert.NoError(t, err)
+	assert.Equal(t, countryName, "TestName")
 	mockSender.AssertExpectations(t)
 }
 
 func TestValidateCountryFail(t *testing.T) {
-	mockSender := new(mocks.MockSender)
-	logger := models.GetNewLogger()
-	service := services.NewGeoNameService(mockSender, logger)
+	mockSender, service := setUpGeoServiceTest()
 
 	mockSender.On("SendGetRequest", mock.Anything).Return([]byte("[]"), nil)
 
-	err := service.ValidateCountry("TestCountry")
+	countryName, err := service.ValidateCountry("TestCountry")
 
 	assert.Error(t, err)
+	assert.Equal(t, countryName, "")
 	mockSender.AssertExpectations(t)
 }
 
 func TestValidateCountryTotalResultsPass(t *testing.T) {
-	mockSender := new(mocks.MockSender)
-	logger := models.GetNewLogger()
-	service := services.NewGeoNameService(mockSender, logger)
+	mockSender, service := setUpGeoServiceTest()
 
 	mockSender.On("SendGetRequest", mock.Anything).Return([]byte(getMockedPassResponse()), nil)
 
-	err := service.ValidateCountry("TestCountry")
+	countryName, err := service.ValidateCountry("TestCountry")
 
 	assert.NoError(t, err)
+	assert.Equal(t, countryName, "TestName")
 	mockSender.AssertExpectations(t)
 }
 
 func TestValidateCountryTotalResultsFail(t *testing.T) {
-	mockSender := new(mocks.MockSender)
-	logger := models.GetNewLogger()
-	service := services.NewGeoNameService(mockSender, logger)
+	mockSender, service := setUpGeoServiceTest()
 
 	mockSender.On("SendGetRequest", mock.Anything).Return([]byte(getMockedFailResponse()), nil)
 
-	err := service.ValidateCountry("TestCountry")
+	countryName, err := service.ValidateCountry("TestCountry")
 
 	assert.Error(t, err)
+	assert.Equal(t, countryName, "")
 	mockSender.AssertExpectations(t)
 }
 
@@ -116,6 +114,6 @@ func getMockedPassResponse() string {
 func setUpGeoServiceTest() (*mocks.MockSender, services.GeoNameService) {
 	mockSender := new(mocks.MockSender)
 	log := models.GetNewLogger()
-	service := services.NewGeoNameService(mockSender, log)
+	service := services.NewGeoNameService(mockSender, log, 0.6)
 	return mockSender, service
 }
