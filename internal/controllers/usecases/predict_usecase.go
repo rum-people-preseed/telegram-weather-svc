@@ -2,8 +2,9 @@ package usecases
 
 import (
 	"fmt"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/date_parser"
 	"time"
+
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/date_parser"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"

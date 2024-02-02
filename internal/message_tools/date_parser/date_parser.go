@@ -2,8 +2,9 @@ package date_parser
 
 import (
 	"errors"
-	"github.com/araddon/dateparse"
 	"time"
+
+	"github.com/araddon/dateparse"
 )
 
 type DateParser interface {
