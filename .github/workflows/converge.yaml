@@ -1,0 +1,37 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  converge:
+    name: Converge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: werf/actions/install@v1.2
+
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Version and repository logging
+        run: |
+          werf version
+          docker version
+          echo $GITHUB_REPOSITORY
+          echo $GITHUB_SHA
+
+      - name: Build and push
+        run: |
+          . $(werf ci-env github --as-file) 
+          werf build --save-build-report=true --build-report-path=images-report.json
+          docker pull $(cat images-report.json | jq -r .Images.service.DockerImageName)
+          docker tag $(cat images-report.json | jq -r .Images.service.DockerImageName) ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
+          docker push ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
