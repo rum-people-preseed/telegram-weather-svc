@@ -16,7 +16,7 @@ func main() {
 	messagesController := controller.NewMessageHandler(bot, logger)
 	httpSender := services.HHTPSender{Log: logger}
 	weatherService := services.NewWeatherPredictorService("http://localhost:8000", &httpSender, logger)
-	geoService := services.NewGeoNameService(&httpSender, logger)
+	geoService := services.NewGeoNameService(&httpSender, logger, 0.6)
 	helpFactory := usecases.HelpUsecaseFactory{}
 	startFactory := usecases.StartUsecaseFactory{}
 	dateParser := date_parser.MultiformatDateParser{}
