@@ -3,35 +3,20 @@ package controller
 import (
 	"errors"
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 )
 
-type Logger interface {
-	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
-	Error(args ...interface{})
-	Panic(args ...interface{})
-	Fatal(args ...interface{})
-
-	Debugf(template string, args ...interface{})
-	Infof(template string, args ...interface{})
-	Warnf(template string, args ...interface{})
-	Errorf(template string, args ...interface{})
-	Panicf(template string, args ...interface{})
-	Fatalf(template string, args ...interface{})
-}
-
 type MessageHandler struct {
 	registeredFactories map[string]UsecaseFactory
 	activeUsecases      map[int64]Usecase
-	log                 Logger
+	log                 models.Logger
 	bot                 *models.Bot
 }
 
-func NewMessageHandler(bot *models.Bot, log Logger) *MessageHandler {
+func NewMessageHandler(bot *models.Bot, log models.Logger) *MessageHandler {
 	return &MessageHandler{
 		bot:                 bot,
 		log:                 log,
@@ -67,7 +52,13 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 	command, err := message_reader.GetCommand(message)
 	gotNewCommand := err == nil
 
-	defer h.EndCallback(update)
+	defer func() {
+		err := h.EndCallback(update)
+		if err != nil {
+			h.log.Warnf("Error during closing callback for chat %v", chatID)
+		}
+	}()
+
 	if gotNewCommand {
 		err = h.ActivateUsecase(chatID, command)
 		if err != nil {

@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/biter777/countries"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
+
 	"io"
 	"net/http"
 	"os"
@@ -19,10 +21,10 @@ type GeoService interface {
 
 type GeoNameService struct {
 	baseURL string
-	log     controller.Logger
+	log     models.Logger
 }
 
-func NewGeoNameService(logger controller.Logger) GeoNameService {
+func NewGeoNameService(logger models.Logger) GeoNameService {
 	baseURL := "http://api.geonames.org/searchJSON?maxRows=1&username=%v"
 	geoNameUsername := os.Getenv("GEO_NAME_SERVICE_USERNAME")
 	return GeoNameService{baseURL: fmt.Sprintf(baseURL, geoNameUsername), log: logger}

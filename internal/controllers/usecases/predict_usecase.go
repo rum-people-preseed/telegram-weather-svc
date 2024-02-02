@@ -3,13 +3,13 @@ package usecases
 import (
 	"errors"
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_constructor"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/location_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/time_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
@@ -69,16 +69,6 @@ func (u *PredictUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfi
 	default:
 		return c.InvalidMessage(update.Message.Chat.ID), c.Error
 	}
-}
-
-func (u *PredictUsecase) handleInitialState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	mes := message_constructor.MakeMessageWithButtons(message.Chat.ID,
-		location_chooser.MainMessage,
-		message_constructor.MakeInlineButton(location_chooser.OptionYes, location_chooser.OptionYesCallbackData),
-		message_constructor.MakeInlineButton(location_chooser.OptionNo, location_chooser.OptionNoCallbackData))
-
-	u.state = LocationSequenceState
-	return &mes, c.Continue
 }
 
 func (u *PredictUsecase) handleLocationSequenceState(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
