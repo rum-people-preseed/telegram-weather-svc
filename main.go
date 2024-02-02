@@ -14,10 +14,11 @@ func main() {
 	bot := models.NewBot(logger)
 
 	messagesController := controller.NewMessageHandler(bot, logger)
-	geoService := services.NewGeoNameService(logger)
+	httpSender := services.HHTPSender{Log: logger}
+	weatherService := services.NewWeatherPredictorService("http://localhost:8000", &httpSender, logger)
+	geoService := services.NewGeoNameService(&httpSender, logger)
 	helpFactory := usecases.HelpUsecaseFactory{}
 	startFactory := usecases.StartUsecaseFactory{}
-	weatherService := services.NewWeatherPredictorService("http://localhost:8000", logger)
 	dateParser := date_parser.MultiformatDateParser{}
 	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService, DateParser: &dateParser}
 	invalidCommandFactory := usecases.InvalidCommandUsecaseFactory{}

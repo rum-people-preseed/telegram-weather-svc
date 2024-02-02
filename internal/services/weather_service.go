@@ -18,13 +18,14 @@ type (
 	}
 
 	WeatherPredictorService struct {
-		URL string
-		log models.Logger
+		URL    string
+		sender Sender
+		log    models.Logger
 	}
 )
 
-func NewWeatherPredictorService(URL string, log models.Logger) WeatherPredictorService {
-	return WeatherPredictorService{URL: URL, log: log}
+func NewWeatherPredictorService(URL string, sender Sender, log models.Logger) WeatherPredictorService {
+	return WeatherPredictorService{URL: URL, sender: sender, log: log}
 }
 
 func (w *WeatherPredictorService) GetWeatherPredictionMessage(weatherData models.WeatherData, chatID int64) (tgbotapi.Chattable, error) {
@@ -35,7 +36,7 @@ func (w *WeatherPredictorService) GetWeatherPredictionMessage(weatherData models
 
 	chartBytes, err := base64.StdEncoding.DecodeString(chartBase64)
 	if err != nil {
-		return nil, errors.New("error during decoding chart")
+		return nil, err
 	}
 
 	imageBuffer := bytes.NewBuffer(chartBytes)
@@ -59,24 +60,28 @@ func (w *WeatherPredictorService) GetParamsFromWeatherData(weatherData models.We
 
 func (w *WeatherPredictorService) GetTemperatureAndChart(weatherData models.WeatherData) (float64, string, error) {
 	avrgTemp, chartBase64 := 0.0, ""
-	temperatureURL := w.URL + "/temperature/"
+	preparedURL := utils.BuildURL(w.URL+"/temperature/", w.GetParamsFromWeatherData(weatherData)...)
 
-	svcResponse, err := SendGetRequestWithParams(temperatureURL, w.GetParamsFromWeatherData(weatherData)...)
+	response, err := w.sender.SendGetRequest(preparedURL)
 	if err != nil {
-		w.log.Error(err)
-		return avrgTemp, chartBase64, errors.New("failing get info from service")
+		return avrgTemp, chartBase64, errors.New("failing get data from service")
 	}
 
-	avrgTemp, ok := svcResponse["average_temperature"].(float64)
-	if !ok {
+	json, err := utils.DecodeBytesToMapJson(response)
+	if err != nil {
+		return avrgTemp, chartBase64, err
+	}
+
+	avrgTemp, err = utils.GetFloatValueOfKey("average_temperature", json)
+	if err != nil {
 		w.log.Error("there is no avrg temperature from response")
-		return avrgTemp, chartBase64, errors.New("there is no avrg temperature from response")
+		return avrgTemp, chartBase64, err
 	}
 
-	chartBase64, ok = svcResponse["chart"].(string)
-	if !ok {
+	chartBase64, err = utils.GetStringValueOfKey("chart", json)
+	if err != nil {
 		w.log.Error("there is no chart from response")
-		return avrgTemp, chartBase64, errors.New("there is no chart from response")
+		return avrgTemp, chartBase64, err
 	}
 
 	return avrgTemp, chartBase64, nil

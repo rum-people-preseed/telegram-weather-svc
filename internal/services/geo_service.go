@@ -1,16 +1,12 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 
 	"github.com/biter777/countries"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services/utils"
-
-	"io"
-	"net/http"
 )
 
 type GeoService interface {
@@ -20,34 +16,39 @@ type GeoService interface {
 
 type GeoNameService struct {
 	preparedURL string
+	sender      Sender
 	log         models.Logger
 }
 
-func NewGeoNameService(logger models.Logger) GeoNameService {
+func NewGeoNameService(sender Sender, logger models.Logger) GeoNameService {
 	baseURL := "http://api.geonames.org/searchJSON"
 	apiKey := os.Getenv("GEO_NAME_SERVICE_USERNAME")
 	apiKeyParam := utils.NewHTTPParam("username", apiKey)
 	maxRowsParam := utils.NewHTTPParam("maxRows", "1")
 	preparedURL := utils.BuildURL(baseURL, apiKeyParam, maxRowsParam)
-	return GeoNameService{preparedURL: preparedURL, log: logger}
+	return GeoNameService{preparedURL: preparedURL, sender: sender, log: logger}
 }
 
 func (s *GeoNameService) ValidateCountry(country string) error {
 	featureClassParam := utils.NewHTTPParam("featureClass", "A")
 	nameEqualsParam := utils.NewHTTPParam("name_equals", country)
 
-	s.log.Infof("URl to Geo service is sent. URL - " + s.preparedURL)
-	jsonResult, err := SendGetRequestWithParams(s.preparedURL, featureClassParam, nameEqualsParam)
+	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam)
+	response, err := s.sender.SendGetRequest(URL)
+	if err != nil {
+		return errors.Join(err, errors.New("failing get data from service"))
+	}
+
+	json, err := utils.DecodeBytesToMapJson(response)
+	if err != nil {
+		return errors.Join(err, errors.New("failing get data from service"))
+	}
+
+	err = s.ValidateTotalResultsCount(json)
 	if err != nil {
 		return err
 	}
 
-	err = s.ValidateTotalResultsCount(jsonResult)
-	if err != nil {
-		return err
-	}
-
-	// here we can already return coordinates for city/country/etc
 	return nil
 }
 
@@ -64,41 +65,24 @@ func (s *GeoNameService) ValidateCity(city string, country string) (models.Coord
 	nameEqualsParam := utils.NewHTTPParam("name_equals", city)
 	countryParam := utils.NewHTTPParam("country", countryCode)
 
-	jsonResult, err := SendGetRequestWithParams(s.preparedURL, featureClassParam, nameEqualsParam, countryParam)
+	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam, countryParam)
+	response, err := s.sender.SendGetRequest(URL)
+	if err != nil {
+		return coordinates, errors.New("failing get data from service")
+	}
+
+	json, err := utils.DecodeBytesToMapJson(response)
 	if err != nil {
 		return coordinates, err
 	}
 
-	err = s.ValidateTotalResultsCount(jsonResult)
+	err = s.ValidateTotalResultsCount(json)
 	if err != nil {
 		return coordinates, err
 	}
 
-	coordinates, err = s.GetCoordinates(jsonResult)
+	coordinates, err = s.GetCoordinates(json)
 	return coordinates, err
-}
-
-func SendGetRequestWithParams(URl string, params ...*utils.HTTPParam) (map[string]interface{}, error) {
-	url := utils.BuildURL(URl, params...)
-	// todo: add logging of url
-	resp, err := http.Get(url)
-
-	if err != nil {
-		return nil, errors.New("failing get info from service")
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.New("failing read response from service")
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, errors.New("error decoding response from service")
-	}
-
-	return result, nil
 }
 
 func (s *GeoNameService) ValidateTotalResultsCount(json map[string]interface{}) error {
