@@ -19,6 +19,8 @@ type GetLocationSequence struct {
 	state       string
 	countryName string
 	cityName    string
+	lat         string
+	lon         string
 }
 
 func CreateGetLocationSequence(geoService services.GeoService) GetLocationSequence {
@@ -34,6 +36,14 @@ func (s *GetLocationSequence) GetCityName() string {
 
 func (s *GetLocationSequence) GetCountryName() string {
 	return s.countryName
+}
+
+func (s *GetLocationSequence) GetLat() string {
+	return s.lat
+}
+
+func (s *GetLocationSequence) GetLon() string {
+	return s.lon
 }
 
 func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
@@ -74,11 +84,13 @@ func (s *GetLocationSequence) handleGettingCountry(message *tgbotapi.Message) (*
 func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
 	s.cityName = message.Text
 
-	err := s.geoService.ValidateCity(s.cityName, s.countryName)
+	lat, lon, err := s.geoService.ValidateCity(s.cityName, s.countryName)
 	if err != nil {
 		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CityValidationError)
 		return &errMsg, c.Continue
 	}
 
+	s.lat = lat
+	s.lon = lon
 	return nil, c.Finished
 }

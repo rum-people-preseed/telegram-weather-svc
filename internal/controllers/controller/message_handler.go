@@ -86,7 +86,7 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 	}
 
 	if msg != nil {
-		return h.bot.SendMessage(msg)
+		return h.bot.SendMessage(msg, chatID)
 	}
 
 	return nil

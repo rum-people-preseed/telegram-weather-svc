@@ -11,7 +11,7 @@ const (
 )
 
 type Usecase interface {
-	Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, Status)
+	Handle(update *tgbotapi.Update) (tgbotapi.Chattable, Status)
 }
 
 type UsecaseFactory interface {
