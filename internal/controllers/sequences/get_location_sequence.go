@@ -4,6 +4,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/location_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
@@ -19,8 +20,7 @@ type GetLocationSequence struct {
 	state       string
 	countryName string
 	cityName    string
-	lat         string
-	lon         string
+	coordinates models.Coordinates
 }
 
 func CreateGetLocationSequence(geoService services.GeoService) GetLocationSequence {
@@ -38,12 +38,8 @@ func (s *GetLocationSequence) GetCountryName() string {
 	return s.countryName
 }
 
-func (s *GetLocationSequence) GetLat() string {
-	return s.lat
-}
-
-func (s *GetLocationSequence) GetLon() string {
-	return s.lon
+func (s *GetLocationSequence) GetCoordinates() models.Coordinates {
+	return s.coordinates
 }
 
 func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
@@ -84,13 +80,12 @@ func (s *GetLocationSequence) handleGettingCountry(message *tgbotapi.Message) (*
 func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
 	s.cityName = message.Text
 
-	lat, lon, err := s.geoService.ValidateCity(s.cityName, s.countryName)
+	coordinates, err := s.geoService.ValidateCity(s.cityName, s.countryName)
 	if err != nil {
 		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CityValidationError)
 		return &errMsg, c.Continue
 	}
 
-	s.lat = lat
-	s.lon = lon
+	s.coordinates = coordinates
 	return nil, c.Finished
 }

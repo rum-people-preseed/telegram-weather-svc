@@ -127,8 +127,7 @@ func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message)
 
 func (u *PredictUsecase) RequestWeatherForecast() (tgbotapi.Chattable, c.Status) {
 	city, country := u.locationSequence.GetCityName(), u.locationSequence.GetCountryName()
-	coordinates := models.NewCoordinates(u.locationSequence.GetLat(), u.locationSequence.GetLon())
-	weatherData := models.NewWeatherData(city, country, coordinates, u.date)
+	weatherData := models.NewWeatherData(city, country, u.locationSequence.GetCoordinates(), u.date)
 	responseForecast, err := u.weatherService.GetWeatherPredictionMessage(weatherData, u.chatID)
 	if err != nil {
 		return c.InvalidMessage(u.chatID), c.Error

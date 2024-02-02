@@ -15,7 +15,7 @@ import (
 
 type GeoService interface {
 	ValidateCountry(country string) error
-	ValidateCity(city string, country string) (string, string, error)
+	ValidateCity(city string, country string) (models.Coordinates, error)
 }
 
 type GeoNameService struct {
@@ -51,12 +51,12 @@ func (s *GeoNameService) ValidateCountry(country string) error {
 	return nil
 }
 
-func (s *GeoNameService) ValidateCity(city string, country string) (string, string, error) {
-	lat, lon := "", ""
+func (s *GeoNameService) ValidateCity(city string, country string) (models.Coordinates, error) {
+	coordinates := models.Coordinates{}
 
 	countryName := countries.ByName(country)
 	if countryName == countries.Unknown {
-		return lat, lon, errors.New("country doesn't exist")
+		return coordinates, errors.New("country doesn't exist")
 	}
 	countryCode := countryName.Alpha2()
 
@@ -66,17 +66,16 @@ func (s *GeoNameService) ValidateCity(city string, country string) (string, stri
 
 	jsonResult, err := SendGetRequestWithParams(s.preparedURL, featureClassParam, nameEqualsParam, countryParam)
 	if err != nil {
-		return lat, lon, err
+		return coordinates, err
 	}
 
 	err = s.ValidateTotalResultsCount(jsonResult)
 	if err != nil {
-		return lat, lon, err
+		return coordinates, err
 	}
 
-	// here we can already return coordinates for city/country/etc
-	lat, lon, err = s.GetCoordinates(jsonResult)
-	return lat, lon, err
+	coordinates, err = s.GetCoordinates(jsonResult)
+	return coordinates, err
 }
 
 func SendGetRequestWithParams(URl string, params ...*utils.HTTPParam) (map[string]interface{}, error) {
@@ -110,22 +109,23 @@ func (s *GeoNameService) ValidateTotalResultsCount(json map[string]interface{}) 
 	return nil
 }
 
-func (s *GeoNameService) GetCoordinates(json map[string]interface{}) (string, string, error) {
+func (s *GeoNameService) GetCoordinates(json map[string]interface{}) (models.Coordinates, error) {
+	coordinates := models.Coordinates{}
 	geonamesJson, ok := json["geonames"].([]interface{})
 
 	geonames := geonamesJson[0].(map[string]interface{})
 	if !ok {
-		return "", "", errors.New("looks like there is no geo data ")
+		return coordinates, errors.New("looks like there is no geo data ")
 	}
 
 	lat, ok := geonames["lat"].(string)
 	if !ok {
-		return "", "", errors.New("looks like there is no lat for ")
+		return coordinates, errors.New("looks like there is no lat for ")
 	}
 
 	lon, ok := geonames["lng"].(string)
 	if !ok {
-		return "", "", errors.New("looks like there is no lat for ")
+		return coordinates, errors.New("looks like there is no lat for ")
 	}
-	return lat, lon, nil
+	return models.NewCoordinates(lat, lon), nil
 }
