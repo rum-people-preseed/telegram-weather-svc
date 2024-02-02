@@ -3,7 +3,6 @@ package sequences
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/location_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
@@ -17,16 +16,18 @@ const (
 
 type GetLocationSequence struct {
 	geoService  services.GeoService
+	chatID      int64
 	state       string
 	countryName string
 	cityName    string
 	coordinates models.Coordinates
 }
 
-func CreateGetLocationSequence(geoService services.GeoService) GetLocationSequence {
+func CreateGetLocationSequence(chatID int64, geoService services.GeoService) GetLocationSequence {
 	return GetLocationSequence{
 		state:      InitialState,
 		geoService: geoService,
+		chatID:     chatID,
 	}
 }
 
@@ -45,7 +46,7 @@ func (s *GetLocationSequence) GetCoordinates() models.Coordinates {
 func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
 	switch s.state {
 	case InitialState:
-		return s.handleInitialState(message_reader.GetChatId(update))
+		return s.handleInitialState()
 	case GettingCountryState:
 		return s.handleGettingCountry(update.Message)
 	case GettingCityState:
@@ -55,8 +56,8 @@ func (s *GetLocationSequence) Handle(update *tgbotapi.Update) (*tgbotapi.Message
 	}
 }
 
-func (s *GetLocationSequence) handleInitialState(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	mes := tgbotapi.NewMessage(chatID, location_chooser.ResponseEnterCountry)
+func (s *GetLocationSequence) handleInitialState() (*tgbotapi.MessageConfig, c.Status) {
+	mes := tgbotapi.NewMessage(s.chatID, location_chooser.ResponseEnterCountry)
 	s.state = GettingCountryState
 
 	return &mes, c.Continue
@@ -67,11 +68,11 @@ func (s *GetLocationSequence) handleGettingCountry(message *tgbotapi.Message) (*
 
 	err := s.geoService.ValidateCountry(s.countryName)
 	if err != nil {
-		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CountryValidationError)
+		errMsg := tgbotapi.NewMessage(s.chatID, location_chooser.CountryValidationError)
 		return &errMsg, c.Continue
 	}
 
-	mes := tgbotapi.NewMessage(message.Chat.ID, location_chooser.ResponseEnterCity)
+	mes := tgbotapi.NewMessage(s.chatID, location_chooser.ResponseEnterCity)
 	s.state = GettingCityState
 
 	return &mes, c.Continue
@@ -82,7 +83,7 @@ func (s *GetLocationSequence) handleGettingCity(message *tgbotapi.Message) (*tgb
 
 	coordinates, err := s.geoService.ValidateCity(s.cityName, s.countryName)
 	if err != nil {
-		errMsg := tgbotapi.NewMessage(message.Chat.ID, location_chooser.CityValidationError)
+		errMsg := tgbotapi.NewMessage(s.chatID, location_chooser.CityValidationError)
 		return &errMsg, c.Continue
 	}
 

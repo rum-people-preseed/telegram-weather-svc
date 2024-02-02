@@ -1,7 +1,7 @@
 package usecases
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/date_parser"
@@ -10,7 +10,6 @@ import (
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_constructor"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/time_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
@@ -23,12 +22,14 @@ type PredictUsecaseFactory struct {
 }
 
 func (f *PredictUsecaseFactory) Create(chatID int64) c.Usecase {
-	statesWithCallbackData := make(map[string]bool)
-	statesWithCallbackData[NextDayOrDateResponseState] = true
+	statesWithCallbackData := make(map[string]string)
+	statesWithCallbackData[NextDayOrDateResponseState] = CallbackQuery
+	statesWithCallbackData[EnterDateResponseState] = Message
+	statesWithCallbackData[LocationSequenceState] = Message
 
 	return &PredictUsecase{
 		chatID:                 chatID,
-		locationSequence:       sequences.CreateGetLocationSequence(f.GeoService),
+		locationSequence:       sequences.CreateGetLocationSequence(chatID, f.GeoService),
 		state:                  LocationSequenceState,
 		weatherService:         f.WeatherService,
 		statesWithCallbackData: statesWithCallbackData,
@@ -47,7 +48,7 @@ type PredictUsecase struct {
 	state                  string
 	locationSequence       sequences.GetLocationSequence
 	dateParser             date_parser.DateParser
-	statesWithCallbackData map[string]bool
+	statesWithCallbackData map[string]string
 	date                   time.Time
 }
 
@@ -55,13 +56,18 @@ const (
 	LocationSequenceState      = "location_sequence"
 	NextDayOrDateResponseState = "next_day_or_date_response"
 	EnterDateResponseState     = "enter_date_response"
+	CallbackQuery              = "CallbackQuery"
+	Message                    = "Message"
+
+	TypeMessage = "Please type required message"
+	PressButton = "Please press required button"
 )
 
 func (u *PredictUsecase) Handle(update *tgbotapi.Update) (tgbotapi.Chattable, c.Status) {
 
-	err := u.CheckCorrectnessOfCallback(update)
+	mes, err := u.CheckCorrectnessOfCallback(update)
 	if err != nil {
-		return c.InvalidCallbackData(message_reader.GetChatId(update)), c.Continue
+		return mes, c.Continue
 	}
 
 	switch u.state {
@@ -105,7 +111,7 @@ func (u *PredictUsecase) handleNextDayOrDateResponseState(callbackQuery *tgbotap
 	case time_chooser.OptionEnterDateCallbackData:
 		return u.handleEnterDateState()
 	default:
-		return c.InvalidMessage(u.chatID), c.Error
+		return message_constructor.MakeTextMessage(u.chatID, PressButton), c.Continue
 	}
 }
 
@@ -136,10 +142,16 @@ func (u *PredictUsecase) RequestWeatherForecast() (tgbotapi.Chattable, c.Status)
 	return responseForecast, c.Finished
 }
 
-func (u *PredictUsecase) CheckCorrectnessOfCallback(update *tgbotapi.Update) error {
-	var err error
-	if update.CallbackQuery == nil && u.statesWithCallbackData[u.state] {
-		err = fmt.Errorf("callback was expected from chat %v", u.chatID)
+func (u *PredictUsecase) CheckCorrectnessOfCallback(update *tgbotapi.Update) (tgbotapi.MessageConfig, error) {
+	var err error = nil
+	var mes tgbotapi.MessageConfig
+	if u.statesWithCallbackData[u.state] == Message && update.Message == nil {
+		err = errors.New("expected Message type")
+		mes = message_constructor.MakeTextMessage(u.chatID, TypeMessage)
+	} else if u.statesWithCallbackData[u.state] == CallbackQuery && update.CallbackQuery == nil {
+		err = errors.New("expected CallbackQuery type")
+		mes = message_constructor.MakeTextMessage(u.chatID, PressButton)
 	}
-	return err
+
+	return mes, err
 }
