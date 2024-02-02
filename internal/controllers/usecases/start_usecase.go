@@ -8,8 +8,10 @@ import (
 type StartUsecaseFactory struct {
 }
 
-func (f *StartUsecaseFactory) Create() controller.Usecase {
-	return &StartUsecase{}
+func (f *StartUsecaseFactory) Create(chatID int64) controller.Usecase {
+	return &StartUsecase{
+		chatID: chatID,
+	}
 }
 
 func (f *StartUsecaseFactory) Command() string {
@@ -17,6 +19,7 @@ func (f *StartUsecaseFactory) Command() string {
 }
 
 type StartUsecase struct {
+	chatID int64
 }
 
 func (u *StartUsecase) Handle(update *tgbotapi.Update) (tgbotapi.Chattable, controller.Status) {
@@ -24,6 +27,6 @@ func (u *StartUsecase) Handle(update *tgbotapi.Update) (tgbotapi.Chattable, cont
 	introText := "Hello, " + message.From.UserName + "!\n" +
 		"This bot is made for help you do not get wet in the rain, do not die from the heat or be ready for an abnormal storm. \n\n" +
 		"Please, follow /help to get information about all facilities we are provide."
-	mes := tgbotapi.NewMessage(message.Chat.ID, introText)
+	mes := tgbotapi.NewMessage(u.chatID, introText)
 	return &mes, controller.Finished
 }

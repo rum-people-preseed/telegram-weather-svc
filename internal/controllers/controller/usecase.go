@@ -15,6 +15,6 @@ type Usecase interface {
 }
 
 type UsecaseFactory interface {
-	Create() Usecase
+	Create(chatID int64) Usecase
 	Command() string
 }

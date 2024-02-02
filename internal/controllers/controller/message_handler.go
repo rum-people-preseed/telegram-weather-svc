@@ -43,7 +43,7 @@ func (h *MessageHandler) ActivateUsecase(chatID int64, command string) error {
 		return errors.New("factory does not exists")
 	}
 
-	h.activeUsecases[chatID] = factory.Create()
+	h.activeUsecases[chatID] = factory.Create(chatID)
 	return nil
 }
 
