@@ -19,7 +19,7 @@ func main() {
 	startFactory := usecases.StartUsecaseFactory{}
 	weatherService := services.NewWeatherPredictorService("http://localhost:8000", logger)
 	dateParser := date_parser.MultiformatDateParser{}
-	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService,  DateParser: &dateParser}
+	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService, DateParser: &dateParser}
 
 	_ = messagesController.RegisterUsecaseFactory(&helpFactory)
 	_ = messagesController.RegisterUsecaseFactory(&startFactory)
