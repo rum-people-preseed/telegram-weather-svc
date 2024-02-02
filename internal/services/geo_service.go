@@ -36,12 +36,12 @@ func (s *GeoNameService) ValidateCountry(country string) error {
 	URL := utils.BuildURL(s.preparedURL, featureClassParam, nameEqualsParam)
 	response, err := s.sender.SendGetRequest(URL)
 	if err != nil {
-		return errors.Join(err, errors.New("failing get data from service"))
+		return err
 	}
 
 	json, err := utils.DecodeBytesToMapJson(response)
 	if err != nil {
-		return errors.Join(err, errors.New("failing get data from service"))
+		return err
 	}
 
 	err = s.ValidateTotalResultsCount(json)
