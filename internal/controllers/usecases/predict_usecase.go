@@ -2,6 +2,9 @@ package usecases
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/date_parser"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
@@ -16,6 +19,7 @@ import (
 type PredictUsecaseFactory struct {
 	WeatherService services.WeatherService
 	GeoService     services.GeoService
+	DateParser     date_parser.DateParser
 }
 
 func (f *PredictUsecaseFactory) Create() c.Usecase {
@@ -27,6 +31,7 @@ func (f *PredictUsecaseFactory) Create() c.Usecase {
 		state:                  LocationSequenceState,
 		weatherService:         f.WeatherService,
 		statesWithCallbackData: statesWithCallbackData,
+		dateParser:             f.DateParser,
 	}
 
 }
@@ -39,10 +44,11 @@ type PredictUsecase struct {
 	weatherService         services.WeatherService
 	state                  string
 	locationSequence       sequences.GetLocationSequence
+	dateParser             date_parser.DateParser
 	statesWithCallbackData map[string]bool
 	country                string
 	city                   string
-	date                   string
+	date                   time.Time
 }
 
 const (
@@ -111,13 +117,17 @@ func (u *PredictUsecase) handleEnterDateState(chatID int64) (*tgbotapi.MessageCo
 }
 
 func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	// todo validate and translate message
-	u.date = message.Text
+	date, err := u.dateParser.ParseDateString(message.Text)
+	if err != nil {
+		mes := message_constructor.MakeTextMessage(message.Chat.ID, time_chooser.DateValidationError)
+		return &mes, c.Continue
+	}
+	u.date = date
 	return u.RequestWeatherForecast(message.Chat.ID)
 }
 
 func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.MessageConfig, c.Status) {
-	weatherData := models.WeatherData{Country: u.country, City: u.city}
+	weatherData := models.WeatherData{Country: u.country, City: u.city, Date: u.date}
 	responseForecast, err := u.weatherService.GetWeather(weatherData)
 	if err != nil {
 		return c.InvalidMessage(chatID), c.Error
