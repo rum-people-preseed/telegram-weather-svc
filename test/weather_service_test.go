@@ -60,7 +60,7 @@ func TestGetWeatherPredictionMessageReturnExpectedMessage(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, photoConfig)
-	assert.Equal(t, "Average temperature is 0.5897908519795756°", photoConfig.Caption)
+	assert.Equal(t, "Average temperature is 0.59°", photoConfig.Caption)
 	assert.NotNil(t, photoConfig.BaseFile)
 }
 
