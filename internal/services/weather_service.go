@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
@@ -52,7 +53,7 @@ func (w *WeatherPredictorService) GetParamsFromWeatherData(weatherData models.We
 	params := []*utils.HTTPParam{
 		utils.NewHTTPParam("city", weatherData.City),
 		utils.NewHTTPParam("country", weatherData.Country),
-		utils.NewHTTPParam("date", weatherData.Date),
+		utils.NewHTTPParam("date", w.GetDateFormatted(weatherData.Date)),
 		utils.NewHTTPParam("latitude", weatherData.Lat),
 		utils.NewHTTPParam("longtitude", weatherData.Lon),
 	}
@@ -104,4 +105,9 @@ func (w *WeatherPredictorService) SendGetRequestWithParams(weatherData models.We
 	}
 
 	return result, nil
+}
+
+func (w *WeatherPredictorService) GetDateFormatted(time time.Time) string {
+	w.log.Infof("Time is " + time.Format("2024-12-30 09:00:00"))
+	return time.Format("2024-12-30 09:00:00")
 }

@@ -7,19 +7,15 @@ type WeatherData struct {
 	Country string
 	Lat     string
 	Lon     string
-	Date    string
+	Date    time.Time
 }
 
-func NewWeatherData(city, country, lat, lon, date string) WeatherData {
+func NewWeatherData(city, country, lat, lon string, date time.Time) WeatherData {
 	return WeatherData{
 		City:    city,
 		Country: country,
 		Lat:     lat,
 		Lon:     lon,
-		Date:    GetFormattedDate(date),
+		Date:    date,
 	}
-}
-
-func GetFormattedDate(date string) string {
-	return time.Now().Format("2016-12-30 09:00:00")
 }

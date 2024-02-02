@@ -46,7 +46,7 @@ type PredictUsecase struct {
 	locationSequence       sequences.GetLocationSequence
 	dateParser             date_parser.DateParser
 	statesWithCallbackData map[string]bool
-	date                   string
+	date                   time.Time
 }
 
 const (
@@ -100,6 +100,7 @@ func (u *PredictUsecase) handleNextDayOrDateResponseState(callbackQuery *tgbotap
 
 	switch callbackData {
 	case time_chooser.OptionNextDayCallbackData:
+		u.date = time.Now().AddDate(0, 0, 1)
 		return u.RequestWeatherForecast(chatID)
 	case time_chooser.OptionEnterDateCallbackData:
 		return u.handleEnterDateState(chatID)
