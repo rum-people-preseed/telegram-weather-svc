@@ -20,10 +20,12 @@ func main() {
 	weatherService := services.NewWeatherPredictorService("http://localhost:8000", logger)
 	dateParser := date_parser.MultiformatDateParser{}
 	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService, DateParser: &dateParser}
+	invalidCommandFactory := usecases.InvalidCommandUsecaseFactory{}
 
 	_ = messagesController.RegisterUsecaseFactory(&helpFactory)
 	_ = messagesController.RegisterUsecaseFactory(&startFactory)
 	_ = messagesController.RegisterUsecaseFactory(&predictFactory)
+	messagesController.RegisterInvalidCommandFactory(&invalidCommandFactory)
 
 	updates := bot.SetUpUpdates()
 	for update := range updates {
