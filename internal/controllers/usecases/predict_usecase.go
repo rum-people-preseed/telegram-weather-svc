@@ -127,6 +127,10 @@ func (u *PredictUsecase) handleEnterDateResponseState(message *tgbotapi.Message)
 		mes := message_constructor.MakeTextMessage(u.chatID, time_chooser.DateValidationError)
 		return &mes, c.Continue
 	}
+	if date.Before(time.Now()) {
+		mes := message_constructor.MakeTextMessage(u.chatID, time_chooser.OldDateValidationError)
+		return &mes, c.Continue
+	}
 	u.date = date
 	return u.RequestWeatherForecast()
 }

@@ -11,5 +11,6 @@ const (
 	ResponseEnterDate = "Enter desired day\n" +
 		"Examples: mm.dd.YYYY / oct 7, 1970"
 
-	DateValidationError = "Please, enter a correct date, date formats are given above"
+	DateValidationError    = "Please, enter a correct date, date formats are given above"
+	OldDateValidationError = "Please, select date in the future"
 )
