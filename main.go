@@ -16,7 +16,7 @@ func main() {
 	geoService := services.NewGeoNameService(logger)
 	helpFactory := usecases.HelpUsecaseFactory{}
 	startFactory := usecases.StartUsecaseFactory{}
-	weatherService := services.WeatherProvider{}
+	weatherService := services.NewWeatherPredictorService("http://localhost:8000", logger)
 	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService}
 
 	_ = messagesController.RegisterUsecaseFactory(&helpFactory)
@@ -32,7 +32,7 @@ func main() {
 		err := messagesController.AcceptNewUpdate(&update)
 		if err != nil {
 			logger.Warnf("Error while handling message %v", err)
-			_ = bot.SendMessage(controller.InvalidMessage(message_reader.GetChatId(&update)))
+			_ = bot.SendMessage(controller.InvalidMessage(message_reader.GetChatId(&update)), message_reader.GetChatId(&update))
 		}
 	}
 }

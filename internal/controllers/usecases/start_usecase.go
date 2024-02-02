@@ -19,7 +19,7 @@ func (f *StartUsecaseFactory) Command() string {
 type StartUsecase struct {
 }
 
-func (u *StartUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, controller.Status) {
+func (u *StartUsecase) Handle(update *tgbotapi.Update) (tgbotapi.Chattable, controller.Status) {
 	message := update.Message
 	introText := "Hello, " + message.From.UserName + "!\n" +
 		"This bot is made for help you do not get wet in the rain, do not die from the heat or be ready for an abnormal storm. \n\n" +

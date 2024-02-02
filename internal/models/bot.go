@@ -59,10 +59,10 @@ func (bot *Bot) SetUpUpdates() tgbotapi.UpdatesChannel {
 	return updates
 }
 
-func (bot *Bot) SendMessage(msg *tgbotapi.MessageConfig) error {
+func (bot *Bot) SendMessage(msg tgbotapi.Chattable, chatID int64) error {
 	_, err := bot.BotAPI.Send(msg)
 	if err != nil {
-		bot.log.Errorf("Failed to send message to chat with id %s", msg.ChatID)
+		bot.log.Errorf("Failed to send message to chat with id %s", chatID)
 		return err
 	}
 

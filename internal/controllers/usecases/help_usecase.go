@@ -19,7 +19,7 @@ func (f *HelpUsecaseFactory) Command() string {
 type HelpUsecase struct {
 }
 
-func (u *HelpUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, controller.Status) {
+func (u *HelpUsecase) Handle(update *tgbotapi.Update) (tgbotapi.Chattable, controller.Status) {
 	message := update.Message
 	mes := tgbotapi.NewMessage(message.Chat.ID,
 		"This bot can help you to get information about weather conditions at any region on any date\n\n"+
