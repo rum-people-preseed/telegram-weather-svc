@@ -83,5 +83,5 @@ func (w *WeatherPredictorService) GetTemperatureAndChart(weatherData models.Weat
 }
 
 func (w *WeatherPredictorService) GetDateFormatted(time time.Time) string {
-	return time.Format("2006-02-01")
+	return time.Format("2006-02-02")
 }
