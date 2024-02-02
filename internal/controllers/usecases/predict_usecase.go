@@ -1,15 +1,14 @@
 package usecases
 
 import (
-	"errors"
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	c "github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/sequences"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_constructor"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/message_tools/message_reader"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/location_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/models/time_chooser"
 	"github.com/rum-people-preseed/telegram-weather-svc/internal/services"
 )
@@ -21,12 +20,11 @@ type PredictUsecaseFactory struct {
 
 func (f *PredictUsecaseFactory) Create() c.Usecase {
 	statesWithCallbackData := make(map[string]bool)
-	statesWithCallbackData[LocationResponseState] = true
 	statesWithCallbackData[NextDayOrDateResponseState] = true
 
 	return &PredictUsecase{
 		locationSequence:       sequences.CreateGetLocationSequence(f.GeoService),
-		state:                  InitialState,
+		state:                  LocationSequenceState,
 		weatherService:         f.WeatherService,
 		statesWithCallbackData: statesWithCallbackData,
 	}
@@ -48,11 +46,9 @@ type PredictUsecase struct {
 }
 
 const (
-	InitialState               string = "initial_state"
-	LocationResponseState             = "location_response"
-	LocationSequenceState             = "location_sequence"
-	NextDayOrDateResponseState        = "next_day_or_date_response"
-	EnterDateResponseState            = "enter_date_response"
+	LocationSequenceState      = "location_sequence"
+	NextDayOrDateResponseState = "next_day_or_date_response"
+	EnterDateResponseState     = "enter_date_response"
 )
 
 func (u *PredictUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
@@ -63,40 +59,12 @@ func (u *PredictUsecase) Handle(update *tgbotapi.Update) (*tgbotapi.MessageConfi
 	}
 
 	switch u.state {
-	case InitialState:
-		return u.handleInitialState(update.Message)
-	case LocationResponseState:
-		return u.handleLocationResponseState(update)
 	case LocationSequenceState:
 		return u.handleLocationSequenceState(update)
 	case NextDayOrDateResponseState:
 		return u.handleNextDayOrDateResponseState(update.CallbackQuery)
 	case EnterDateResponseState:
 		return u.handleEnterDateResponseState(update.Message)
-	default:
-		return c.InvalidMessage(update.Message.Chat.ID), c.Error
-	}
-}
-
-func (u *PredictUsecase) handleInitialState(message *tgbotapi.Message) (*tgbotapi.MessageConfig, c.Status) {
-	mes := message_constructor.MakeMessageWithButtons(message.Chat.ID,
-		location_chooser.MainMessage,
-		message_constructor.MakeInlineButton(location_chooser.OptionYes, location_chooser.OptionYesCallbackData),
-		message_constructor.MakeInlineButton(location_chooser.OptionNo, location_chooser.OptionNoCallbackData))
-
-	u.state = LocationResponseState
-	return &mes, c.Continue
-}
-
-func (u *PredictUsecase) handleLocationResponseState(update *tgbotapi.Update) (*tgbotapi.MessageConfig, c.Status) {
-	chatID, callbackData := update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data
-
-	switch callbackData {
-	case location_chooser.OptionYesCallbackData:
-		return u.handleNextDayOrDateState(chatID)
-	case location_chooser.OptionNoCallbackData:
-		u.state = LocationSequenceState
-		return u.locationSequence.Handle(update)
 	default:
 		return c.InvalidMessage(update.Message.Chat.ID), c.Error
 	}
@@ -161,7 +129,7 @@ func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.Message
 func (u *PredictUsecase) CheckCorrectnessOfCallback(update *tgbotapi.Update) error {
 	var err error
 	if update.CallbackQuery == nil && u.statesWithCallbackData[u.state] {
-		err = errors.New(fmt.Sprintf("Callback was expected from chat %v", message_reader.GetChatId(update)))
+		err = fmt.Errorf("callback was expected from chat %v", message_reader.GetChatId(update))
 	}
 	return err
 }

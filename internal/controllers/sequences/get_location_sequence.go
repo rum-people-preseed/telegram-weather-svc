@@ -10,8 +10,8 @@ import (
 
 const (
 	InitialState        string = "initial_state"
-	GettingCountryState        = "getting_country"
-	GettingCityState           = "getting_city"
+	GettingCountryState string = "getting_country"
+	GettingCityState    string = "getting_city"
 )
 
 type GetLocationSequence struct {

@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/biter777/countries"
-	"github.com/rum-people-preseed/telegram-weather-svc/internal/controllers/controller"
+	"github.com/rum-people-preseed/telegram-weather-svc/internal/models"
+
 	"io"
 	"net/http"
 	"os"
@@ -19,10 +21,10 @@ type GeoService interface {
 
 type GeoNameService struct {
 	baseURL string
-	log     controller.Logger
+	log     models.Logger
 }
 
-func NewGeoNameService(logger controller.Logger) GeoNameService {
+func NewGeoNameService(logger models.Logger) GeoNameService {
 	baseURL := "http://api.geonames.org/searchJSON?maxRows=1&username=%v"
 	geoNameUsername := os.Getenv("GEO_NAME_SERVICE_USERNAME")
 	return GeoNameService{baseURL: fmt.Sprintf(baseURL, geoNameUsername), log: logger}
@@ -45,7 +47,12 @@ func (s *GeoNameService) ValidateCountry(country string) error {
 
 func (s *GeoNameService) ValidateCity(city string, country string) error {
 
-	countryCode := countries.ByName(country).Alpha2()
+	countryName := countries.ByName(country)
+	if countryName == countries.Unknown {
+		return errors.New("country doesn't exist")
+	}
+
+	countryCode := countryName.Alpha2()
 	jsonResult, err := s.SendGetRequestWithParams("featureClass=P", "name_equals="+city, "country="+countryCode)
 	if err != nil {
 		return err

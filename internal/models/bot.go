@@ -1,8 +1,9 @@
 package models
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"os"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 type Logger interface {
@@ -65,6 +66,5 @@ func (bot *Bot) SendMessage(msg *tgbotapi.MessageConfig) error {
 		return err
 	}
 
-	println("Sent message is " + msg.Text)
 	return nil
 }
