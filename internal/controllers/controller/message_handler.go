@@ -29,7 +29,7 @@ func (h *MessageHandler) RegisterUsecaseFactory(usecaseFactory UsecaseFactory) e
 	command := usecaseFactory.Command()
 	_, ok := h.registeredFactories[command]
 	if ok {
-		return errors.New(fmt.Sprintf("UsecaseFactory for command %v is already registered", command))
+		return fmt.Errorf("UsecaseFactory for command %v is already registered", command)
 	}
 
 	h.registeredFactories[command] = usecaseFactory

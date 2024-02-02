@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"errors"
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -130,7 +129,7 @@ func (u *PredictUsecase) RequestWeatherForecast(chatID int64) (*tgbotapi.Message
 func (u *PredictUsecase) CheckCorrectnessOfCallback(update *tgbotapi.Update) error {
 	var err error
 	if update.CallbackQuery == nil && u.statesWithCallbackData[u.state] {
-		err = errors.New(fmt.Sprintf("Callback was expected from chat %v", message_reader.GetChatId(update)))
+		err = fmt.Errorf("callback was expected from chat %v", message_reader.GetChatId(update))
 	}
 	return err
 }
