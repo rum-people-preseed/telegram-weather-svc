@@ -67,6 +67,7 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 	command, err := message_reader.GetCommand(message)
 	gotNewCommand := err == nil
 
+	defer h.EndCallback(update)
 	if gotNewCommand {
 		err = h.ActivateUsecase(chatID, command)
 		if err != nil {
@@ -75,7 +76,6 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 		}
 	}
 
-	defer h.EndCallback(update)
 	return h.ExecuteUsecase(update)
 }
 

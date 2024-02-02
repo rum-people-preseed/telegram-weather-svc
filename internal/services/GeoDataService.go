@@ -45,7 +45,12 @@ func (s *GeoNameService) ValidateCountry(country string) error {
 
 func (s *GeoNameService) ValidateCity(city string, country string) error {
 
-	countryCode := countries.ByName(country).Alpha2()
+	countryName := countries.ByName(country)
+	if countryName == countries.Unknown {
+		return errors.New("country doesn't exist")
+	}
+
+	countryCode := countryName.Alpha2()
 	jsonResult, err := s.SendGetRequestWithParams("featureClass=P", "name_equals="+city, "country="+countryCode)
 	if err != nil {
 		return err
