@@ -18,13 +18,11 @@ func main() {
 	messagesController := controller.NewMessageHandler(bot, logger.Sugar())
 	geoService := services.NewGeoNameService(logger.Sugar())
 	helpFactory := usecases.HelpUsecaseFactory{}
-	updateLocationFactory := usecases.UpdateLocationUsecaseFactory{&geoService}
 	startFactory := usecases.StartUsecaseFactory{}
 	weatherService := services.WeatherProvider{}
 	predictFactory := usecases.PredictUsecaseFactory{WeatherService: &weatherService, GeoService: &geoService}
 
 	messagesController.RegisterUsecaseFactory(&helpFactory)
-	messagesController.RegisterUsecaseFactory(&updateLocationFactory)
 	messagesController.RegisterUsecaseFactory(&startFactory)
 	messagesController.RegisterUsecaseFactory(&predictFactory)
 
