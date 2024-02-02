@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -10,10 +9,11 @@ import (
 )
 
 type MessageHandler struct {
-	registeredFactories map[string]UsecaseFactory
-	activeUsecases      map[int64]Usecase
-	log                 models.Logger
-	bot                 *models.Bot
+	registeredFactories   map[string]UsecaseFactory
+	activeUsecases        map[int64]Usecase
+	invalidCommandFactory UsecaseFactory
+	log                   models.Logger
+	bot                   *models.Bot
 }
 
 func NewMessageHandler(bot *models.Bot, log models.Logger) *MessageHandler {
@@ -36,15 +36,17 @@ func (h *MessageHandler) RegisterUsecaseFactory(usecaseFactory UsecaseFactory) e
 	return nil
 }
 
-func (h *MessageHandler) ActivateUsecase(chatID int64, command string) error {
+func (h *MessageHandler) RegisterInvalidCommandFactory(invalidCommandFactory UsecaseFactory) {
+	h.invalidCommandFactory = invalidCommandFactory
+}
+
+func (h *MessageHandler) ActivateUsecase(chatID int64, command string) {
 	factory, exists := h.registeredFactories[command]
 	if !exists {
-		h.log.Warnf("factory for command %v does not exists", command)
-		return errors.New("factory does not exists")
+		factory = h.invalidCommandFactory
 	}
 
-	h.activeUsecases[chatID] = factory.Create()
-	return nil
+	h.activeUsecases[chatID] = factory.Create(chatID)
 }
 
 func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
@@ -60,11 +62,7 @@ func (h *MessageHandler) AcceptNewUpdate(update *tgbotapi.Update) error {
 	}()
 
 	if gotNewCommand {
-		err = h.ActivateUsecase(chatID, command)
-		if err != nil {
-			h.log.Warnf("failed to activate usecase %v", err)
-			return errors.New("failed to activate usecase")
-		}
+		h.ActivateUsecase(chatID, command)
 	}
 
 	return h.ExecuteUsecase(update)
@@ -75,8 +73,8 @@ func (h *MessageHandler) ExecuteUsecase(update *tgbotapi.Update) error {
 	activeUsecase, exists := h.activeUsecases[chatID]
 
 	if !exists {
-		h.log.Warnf("usecase does not exists %v", chatID)
-		return errors.New("usecase does not exists")
+		h.ActivateUsecase(chatID, "/invalid_command")
+		activeUsecase = h.activeUsecases[chatID]
 	}
 
 	msg, status := activeUsecase.Handle(update)
