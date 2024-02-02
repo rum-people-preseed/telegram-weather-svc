@@ -108,6 +108,5 @@ func (w *WeatherPredictorService) SendGetRequestWithParams(weatherData models.We
 }
 
 func (w *WeatherPredictorService) GetDateFormatted(time time.Time) string {
-	w.log.Infof("Time is " + time.Format("2024-12-30 09:00:00"))
-	return time.Format("2024-12-30 09:00:00")
+	return time.Format("2006-02-01 15:04:05")
 }
